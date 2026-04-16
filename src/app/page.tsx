@@ -11,7 +11,7 @@ import { db } from "@/lib/firebase";
 
 export default function Home() {
   const [latestNews, setLatestNews] = useState<any>(null);
-  // 💡 拔除寫死文字，初始狀態設為載入提示
+  // 初始狀態設為載入提示
   const [profile, setProfile] = useState({ bio: "正在與後台連動，載入大師簡介中...", imageUrl: "" });
 
   useEffect(() => {
