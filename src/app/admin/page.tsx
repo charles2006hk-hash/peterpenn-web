@@ -25,6 +25,7 @@ export default function AdminDashboard() {
   const [bio, setBio] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [profileFile, setProfileFile] = useState<File | null>(null);
+  const [profilePreviewUrl, setProfilePreviewUrl] = useState<string | null>(null); // 💡 新增：本地預覽
   const [categories, setCategories] = useState<string[]>(["Monochrome", "Street", "Commercial"]);
   const [newCategory, setNewCategory] = useState("");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -76,6 +77,7 @@ export default function AdminDashboard() {
       if (profileSnap.exists()) {
         setBio(profileSnap.data().bio || "");
         setProfileImageUrl(profileSnap.data().imageUrl || "");
+        setProfilePreviewUrl(profileSnap.data().imageUrl || "");
       }
       const configSnap = await getDoc(doc(db, "settings", "config"));
       if (configSnap.exists()) {
@@ -114,11 +116,15 @@ export default function AdminDashboard() {
   };
 
   // === 統一圖片選擇處理 ===
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: "gallery" | "news" | "teachings") => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: "gallery" | "news" | "teachings" | "profile") => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       const url = URL.createObjectURL(selectedFile);
-      if (type === "gallery") {
+      if (type === "profile") {
+        setProfileFile(selectedFile);
+        if (profilePreviewUrl && profilePreviewUrl.startsWith('blob:')) URL.revokeObjectURL(profilePreviewUrl);
+        setProfilePreviewUrl(url);
+      } else if (type === "gallery") {
         setFile(selectedFile);
         if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(url);
@@ -140,14 +146,15 @@ export default function AdminDashboard() {
     try {
       let finalImageUrl = profileImageUrl;
       if (profileFile) {
-        const compressed = await imageCompression(profileFile, { maxSizeMB: 0.2 });
+        const compressed = await imageCompression(profileFile, { maxSizeMB: 0.2, maxWidthOrHeight: 1080 });
         const storageRef = ref(storage, `settings/profile_${Date.now()}`);
         await uploadBytesResumable(storageRef, compressed);
         finalImageUrl = await getDownloadURL(storageRef);
       }
       await setDoc(doc(db, "settings", "profile"), { bio, imageUrl: finalImageUrl }, { merge: true });
       setProfileImageUrl(finalImageUrl);
-      alert("個人簡介已更新");
+      setProfileFile(null);
+      alert("個人簡介與照片已成功更新！");
     } catch (e) { alert("更新失敗"); }
     setIsSavingSettings(false);
   };
@@ -359,15 +366,27 @@ export default function AdminDashboard() {
               <div className="space-y-6">
                 <h3 className="text-zinc-500 text-xs tracking-[0.2em] uppercase flex items-center gap-2"><UserIcon size={14}/> 個人形象與簡介</h3>
                 <textarea value={bio} onChange={(e)=>setBio(e.target.value)} rows={8} className="w-full bg-zinc-900 border border-zinc-800 p-4 outline-none text-sm leading-relaxed" placeholder="輸入首頁的關於大師簡介..." />
-                <button onClick={handleSaveProfile} disabled={isSavingSettings} className="bg-white text-black px-8 py-3 text-xs tracking-widest hover:bg-zinc-200 transition-colors uppercase">{isSavingSettings ? "儲存中..." : "儲存個人資料"}</button>
+                
+                {/* 儲存按鈕加強反饋 */}
+                <button onClick={handleSaveProfile} disabled={isSavingSettings} className="bg-white text-black px-8 py-4 text-xs tracking-widest hover:bg-zinc-200 transition-colors uppercase w-full font-bold">
+                  {isSavingSettings ? "上傳並儲存中..." : "儲存大師簡介與照片"}
+                </button>
               </div>
+              
               <div className="flex flex-col items-center justify-center bg-zinc-900/30 border border-zinc-800 p-8">
-                <div className="relative w-40 h-40 rounded-full overflow-hidden bg-black mb-6 border-2 border-zinc-800">
-                  {profileImageUrl ? <Image src={profileImageUrl} alt="P" fill className="object-cover grayscale" /> : <UserIcon size={40} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-20" />}
+                <div className="relative w-48 h-48 rounded-full overflow-hidden bg-black mb-6 border-2 border-zinc-800 shadow-2xl">
+                  {/* 💡 使用 profilePreviewUrl 讓使用者在選好檔案的瞬間就能預覽 */}
+                  {profilePreviewUrl ? (
+                    <Image src={profilePreviewUrl} alt="Portrait" fill className="object-cover grayscale hover:grayscale-0 transition-all duration-700" />
+                  ) : (
+                    <UserIcon size={40} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-20" />
+                  )}
                 </div>
-                <input type="file" onChange={(e)=>setProfileFile(e.target.files?.[0] || null)} className="text-xs text-zinc-500" />
+                <input type="file" accept="image/*" onChange={(e)=>handleFileSelect(e, "profile")} className="text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:border-0 file:bg-zinc-800 file:text-white cursor-pointer" />
+                <p className="text-[10px] text-zinc-600 tracking-widest mt-4">選取照片後，請點擊左側的「儲存」按鈕</p>
               </div>
             </section>
+            
             <section className="space-y-6 pt-8 border-t border-zinc-900">
               <h3 className="text-zinc-500 text-xs tracking-[0.2em] uppercase flex items-center gap-2"><Settings size={14}/> 作品類別管理 (Categories)</h3>
               <div className="flex gap-4 max-w-md">
