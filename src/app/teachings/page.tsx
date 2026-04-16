@@ -1,68 +1,96 @@
 // src/app/teachings/page.tsx
 "use client";
 
+import { useEffect, useState } from "react";
+import { collection, getDocs, query, orderBy, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowLeft, BookOpen, ExternalLink } from "lucide-react";
-
-// 模擬教學文章資料 (可替換為實際 DCFever 連結)
-const articles = [
-  { id: 1, title: "雋美黑白：攝影眼的培養與觀察", date: "2023.10", platform: "DCFever", link: "#" },
-  { id: 2, title: "不依賴器材：回歸光影與本質的對話", date: "2023.05", platform: "DCFever", link: "#" },
-  { id: 3, title: "暗房思維與現代 Lightroom 的對立與統一", date: "2022.11", platform: "Photography Magazine", link: "#" },
-  { id: 4, title: "街頭紀實：如何在混亂中尋找秩序的切片", date: "2021.08", platform: "DCFever", link: "#" },
-];
+import { ArrowLeft, BookOpen, Loader2 } from "lucide-react";
 
 export default function TeachingsPage() {
+  const [articles, setArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTeachings = async () => {
+      try {
+        // 抓取未封存的教學文章
+        const q = query(collection(db, "teachings"), where("isArchived", "==", false), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setArticles(data);
+      } catch (error) {
+        console.error("載入教學失敗 (可能需要建立 Firebase 複合索引):", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTeachings();
+  }, []);
+
   return (
     <main className="relative min-h-screen bg-[#0a0a0a] text-white selection:bg-white selection:text-black">
-      <div className="film-grain" />
-      <div className="vignette" />
+      <div className="film-grain" /><div className="vignette" />
 
       <header className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center w-full px-8 py-6 mix-blend-difference">
         <Link href="/" className="flex items-center gap-2 hover:text-zinc-400 transition-colors font-serif tracking-widest text-sm uppercase">
           <ArrowLeft size={16} /> Home
         </Link>
-        <h1 className="font-serif text-xs md:text-sm tracking-[0.3em] uppercase text-zinc-500">Teachings & Philosophy</h1>
+        <h1 className="font-serif text-xs md:text-sm tracking-[0.3em] uppercase text-zinc-500">Teachings</h1>
       </header>
 
-      <section className="relative z-10 pt-32 pb-20 px-6 max-w-4xl mx-auto min-h-screen flex flex-col justify-center">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1 }}>
+      <section className="relative z-10 pt-32 pb-20 px-6 max-w-5xl mx-auto min-h-screen flex flex-col items-center">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1 }} className="w-full">
           <BookOpen size={32} className="mb-8 opacity-50 mx-auto" strokeWidth={1} />
-          <h2 className="text-4xl md:text-5xl text-center mb-16 tracking-[0.2em] font-serif font-light">攝影眼 (The Eye)</h2>
+          <h2 className="text-4xl md:text-5xl text-center mb-16 tracking-[0.2em] font-serif font-light uppercase">攝影眼</h2>
         </motion.div>
 
-        <motion.div 
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5, delay: 0.3 }}
-          className="space-y-10 text-zinc-400 leading-loose text-sm md:text-base tracking-widest font-serif text-justify border-l border-zinc-800 pl-8 mb-20"
-        >
-          <p>「攝影不只是按下快門，而是你如何看待這個世界。」</p>
-          <p>拍攝黑白並非門檻高，而是需要透過欣賞與潛移默化，培養出獨特的「攝影眼」。抽離了色彩的干擾，我們被迫直視畫面的骨架：光影的切割、幾何的呼應、以及人物當下的情緒張力。</p>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 0.6 }}>
-          <h3 className="text-xl tracking-[0.2em] font-serif mb-8 border-b border-zinc-800 pb-4">精選專欄與教學</h3>
-          <div className="flex flex-col gap-6">
+        {loading ? (
+          <div className="flex justify-center py-20"><Loader2 className="animate-spin text-zinc-700" size={32} /></div>
+        ) : articles.length === 0 ? (
+          <div className="text-zinc-500 font-serif tracking-widest">目前暫無文章。</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
             {articles.map((article, index) => (
-              <a 
+              <motion.div 
                 key={article.id} 
-                href={article.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex flex-col md:flex-row md:items-center justify-between p-6 bg-zinc-900/30 border border-zinc-800/50 hover:bg-zinc-800/50 transition-all duration-500 cursor-pointer"
+                initial={{ opacity: 0, y: 20 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                transition={{ delay: index * 0.1 }}
+                className="group flex flex-col bg-zinc-900/30 border border-zinc-800/50 hover:bg-zinc-800/80 transition-all duration-500"
               >
-                <div className="font-serif">
-                  <h4 className="text-lg text-zinc-200 tracking-widest group-hover:text-white transition-colors">{article.title}</h4>
-                  <div className="text-xs text-zinc-500 tracking-widest mt-2 flex items-center gap-4">
-                    <span>{article.date}</span>
-                    <span className="uppercase border border-zinc-700 px-2 py-0.5">{article.platform}</span>
+                <Link href={`/teachings/${article.id}`} className="block relative w-full aspect-video overflow-hidden bg-zinc-950">
+                  {article.coverImage ? (
+                    <Image src={article.coverImage} alt={article.title} fill className="object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700" />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-zinc-800 text-xs tracking-widest uppercase">No Cover</div>
+                  )}
+                </Link>
+                
+                <div className="p-6 flex flex-col flex-grow font-serif">
+                  <div className="text-[10px] text-zinc-500 tracking-[0.2em] mb-4 flex flex-wrap gap-2 uppercase">
+                    <span className="border border-zinc-800 px-2 py-0.5">{article.category}</span>
+                    {article.seriesName && <span className="border border-zinc-800 px-2 py-0.5">{article.seriesName} {article.chapterIndex && `Ch.${article.chapterIndex}`}</span>}
+                  </div>
+                  
+                  <Link href={`/teachings/${article.id}`}>
+                    <h3 className="text-xl text-zinc-200 tracking-widest leading-relaxed group-hover:text-white transition-colors mb-4 line-clamp-2">
+                      {article.title}
+                    </h3>
+                  </Link>
+
+                  <div className="mt-auto pt-6 flex flex-wrap gap-2">
+                    {article.tags?.map((tag: string) => (
+                      <span key={tag} className="text-zinc-600 text-[10px] tracking-widest uppercase">#{tag}</span>
+                    ))}
                   </div>
                 </div>
-                <ExternalLink size={18} className="text-zinc-600 group-hover:text-white transition-colors mt-4 md:mt-0" />
-              </a>
+              </motion.div>
             ))}
           </div>
-        </motion.div>
+        )}
       </section>
     </main>
   );

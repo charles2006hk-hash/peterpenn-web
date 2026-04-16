@@ -11,36 +11,30 @@ import { db } from "@/lib/firebase";
 
 export default function Home() {
   const [latestNews, setLatestNews] = useState<any>(null);
-  const [profile, setProfile] = useState({ bio: "", imageUrl: "" });
+  // 💡 拔除寫死文字，初始狀態設為載入提示
+  const [profile, setProfile] = useState({ bio: "正在與後台連動，載入大師簡介中...", imageUrl: "" });
 
   useEffect(() => {
-    // 1. 從 Firestore 抓取「系統設置」中的個人簡介與頭像
     const fetchSettings = async () => {
       try {
         const snap = await getDoc(doc(db, "settings", "profile"));
-        if (snap.exists()) {
+        if (snap.exists() && snap.data().bio) {
           setProfile(snap.data() as any);
+        } else {
+          setProfile({ bio: "目前後台尚未設定簡介，請前往 Admin 填寫。", imageUrl: "" });
         }
       } catch (error) {
         console.error("載入個人設定失敗:", error);
       }
     };
 
-    // 2. 從 Firestore 抓取日期最新的一筆動態 (並過濾掉已封存的)
     const fetchLatestNews = async () => {
       try {
-        const q = query(
-          collection(db, "news"), 
-          where("isArchived", "==", false), 
-          orderBy("date", "desc"), 
-          limit(1)
-        );
+        const q = query(collection(db, "news"), where("isArchived", "==", false), orderBy("date", "desc"), limit(1));
         const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-          setLatestNews(snapshot.docs[0].data());
-        }
+        if (!snapshot.empty) setLatestNews(snapshot.docs[0].data());
       } catch (error) {
-        console.error("載入最新動態失敗 (請確認 Firebase Console 是否提示需要建立索引):", error);
+        console.error("載入最新動態失敗:", error);
       }
     };
 
@@ -83,7 +77,6 @@ export default function Home() {
           以「攝影眼」洞見黑白光影的極致美學
         </motion.p>
 
-        {/* 動態通知列聯動 (如果有資料才顯示) */}
         {latestNews && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 1.2 }}>
             <Link href="/news" className="group flex flex-col md:flex-row items-center gap-4 md:gap-6 border border-zinc-800/60 bg-zinc-900/20 backdrop-blur-sm px-6 py-3 hover:bg-zinc-800/40 hover:border-zinc-500 transition-all duration-700">
@@ -106,34 +99,24 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* 關於大師 (與後台 Settings 聯動) */}
+      {/* === 關於大師 (完全與後台連動) === */}
       <section id="about" className="relative z-10 min-h-screen flex items-center px-8 md:px-24 py-20 bg-gradient-to-b from-transparent to-zinc-950/80">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-16">
           <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "-20%" }} transition={{ duration: 1 }} className="w-full md:w-1/2 aspect-[3/4] relative bg-zinc-900 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden group">
             {profile.imageUrl ? (
-              <Image 
-                src={profile.imageUrl} 
-                alt="Peter Penn" 
-                fill 
-                className="object-cover grayscale hover:grayscale-0 transition-all duration-1000" 
-              />
+              <Image src={profile.imageUrl} alt="Peter Penn" fill className="object-cover grayscale hover:grayscale-0 transition-all duration-1000" />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-zinc-700 text-sm tracking-widest border border-zinc-800">
-                [此處置放 潘老師 形象照]
+                [請至後台設定形象照]
               </div>
             )}
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "-20%" }} transition={{ duration: 1 }} className="w-full md:w-1/2 space-y-8 font-serif leading-loose">
             <h3 className="text-3xl tracking-[0.1em]">Equipment is secondary,<br/>vision is primary.</h3>
             
-            {/* 使用 whitespace-pre-wrap 完美呈現後台輸入的換行符號 */}
+            {/* 💡 強制讀取資料庫，並支援換行排版 */}
             <div className="text-gray-400 space-y-6 text-sm tracking-wide text-justify whitespace-pre-wrap">
-              {profile.bio || (
-                <>
-                  <p>從事商業攝影逾四十載，專精於珠寶首飾的光影雕琢。近年，潘少君 (Peter Penn) 將鏡頭轉向世界，足跡遍及歐亞，深入探索旅遊與藝術攝影。</p>
-                  <p>他在 DCFever 的「雋美黑白」專欄中提倡，拍攝黑白並非門檻高，而是需要透過欣賞與潛移默化，培養出獨特的「攝影眼」。不依賴器材的華麗，而是回歸光影與本質的對話。</p>
-                </>
-              )}
+              {profile.bio}
             </div>
             
             <div className="pt-4">
