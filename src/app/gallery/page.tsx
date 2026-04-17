@@ -7,7 +7,7 @@ import { db } from "@/lib/firebase";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Loader2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, X, Image as ImageIcon } from "lucide-react";
 
 interface Work {
   id: string;
@@ -22,14 +22,13 @@ export default function GalleryPage() {
   const [loading, setLoading] = useState(true);
   const [selectedWork, setSelectedWork] = useState<Work | null>(null);
   
-  // 💡 分類過濾狀態
+  // 分類過濾狀態
   const [categories, setCategories] = useState<string[]>(["All"]);
   const [activeCategory, setActiveCategory] = useState("All");
 
   useEffect(() => {
     const fetchWorks = async () => {
       try {
-        // 抓取未封存的作品
         const q = query(collection(db, "works"), where("isArchived", "==", false), orderBy("createdAt", "desc"));
         const querySnapshot = await getDocs(q);
         const fetchedWorks = querySnapshot.docs.map((doc) => ({
@@ -39,7 +38,6 @@ export default function GalleryPage() {
         
         setWorks(fetchedWorks);
 
-        // 提取不重複的分類
         const uniqueCategories = Array.from(new Set(fetchedWorks.map(item => item.category))).filter(Boolean);
         setCategories(["All", ...uniqueCategories]);
       } catch (error) {
@@ -59,25 +57,24 @@ export default function GalleryPage() {
     } else {
       document.body.style.overflow = "auto";
     }
-    // 確保元件卸載時恢復滾動
     return () => { document.body.style.overflow = "auto"; };
   }, [selectedWork]);
 
-  // 💡 過濾當前顯示的作品
   const filteredWorks = activeCategory === "All" ? works : works.filter(w => w.category === activeCategory);
 
   return (
-    <main className="relative min-h-screen bg-[#0a0a0a] text-white selection:bg-white selection:text-black overflow-hidden">
+    // 💡 父層加上 w-full 確保不會被無限撐開
+    <main className="relative min-h-screen w-full bg-[#0a0a0a] text-white selection:bg-white selection:text-black overflow-hidden">
       <div className="film-grain" />
 
       {/* 頂部導航 */}
-      <header className="absolute top-0 left-0 right-0 z-50 flex flex-col md:flex-row justify-between items-center w-full px-6 md:px-8 py-6 mix-blend-difference gap-4">
-        <Link href="/" className="flex items-center gap-2 hover:text-gray-400 transition-colors font-serif tracking-widest text-xs md:text-sm uppercase">
+      <header className="absolute top-0 left-0 right-0 z-50 flex flex-col md:flex-row justify-between items-center w-full px-6 md:px-8 py-6 mix-blend-difference gap-4 pointer-events-none">
+        <Link href="/" className="flex items-center gap-2 hover:text-gray-400 transition-colors font-serif tracking-widest text-xs md:text-sm uppercase pointer-events-auto">
           <ArrowLeft size={16} /> Home
         </Link>
-        <h1 className="font-serif text-xs md:text-sm tracking-[0.3em] uppercase text-zinc-500">Peter Penn Exhibition</h1>
+        <h1 className="font-serif text-xs md:text-sm tracking-[0.3em] uppercase text-zinc-500">Virtual Gallery</h1>
         
-        {/* 💡 分類過濾選單 (置於右上角，手機版則置中) */}
+        {/* 分類過濾選單 */}
         {!loading && categories.length > 1 && (
           <div className="flex flex-wrap justify-center gap-4 md:gap-6 pointer-events-auto">
             {categories.map((cat) => (
@@ -105,13 +102,14 @@ export default function GalleryPage() {
           <p>此分類暫無作品。</p>
         </div>
       ) : (
-        /* 橫向滾動展廳核心 */
+        /* 💡 修正核心：加上 w-full 與 max-w-full，強迫它在螢幕內產生橫向滾動條 */
+        /* 同時微調 gap，讓下一張照片「微微露出邊緣」，引導視覺 */
         <motion.div 
-          layout // 💡 加入 layout 動畫，切換分類時會平滑移動
-          className="flex items-center h-screen overflow-x-auto overflow-y-hidden snap-x snap-mandatory px-[15vw] gap-[20vw] pb-10" 
+          layout 
+          className="flex items-center h-screen w-full max-w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory px-[15vw] gap-[8vw] md:gap-[10vw] pb-10" 
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence>
             {filteredWorks.map((work, index) => (
               <motion.div 
                 key={work.id}
@@ -120,9 +118,8 @@ export default function GalleryPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="relative flex flex-col items-center justify-center shrink-0 w-[80vw] md:w-[400px] snap-center"
+                className="relative flex flex-col items-center justify-center shrink-0 w-[75vw] md:w-[400px] snap-center"
               >
-                {/* 背景光暈效果 */}
                 <div className="absolute top-[-20%] w-[150%] h-[150%] bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.08)_0%,_rgba(0,0,0,0)_60%)] pointer-events-none z-0" />
                 <div className="absolute bottom-[100%] w-[1px] h-[50vh] bg-gradient-to-t from-zinc-500 to-transparent z-0 opacity-50" />
 
@@ -138,7 +135,6 @@ export default function GalleryPage() {
                       alt={work.title}
                       fill
                       sizes="(max-width: 768px) 80vw, 400px"
-                      // 💡 手機預設彩色 (grayscale-0)，平板以上預設黑白並加 hover 特效
                       className="object-cover transition-all duration-[1500ms] ease-out grayscale-0 md:grayscale md:group-hover:grayscale-0 md:group-hover:scale-105"
                       priority={index < 3}
                     />
@@ -153,6 +149,14 @@ export default function GalleryPage() {
           </AnimatePresence>
           <div className="shrink-0 w-[10vw]" />
         </motion.div>
+      )}
+
+      {/* 💡 新增：橫向滑動提示動畫 (Swipe to Explore) */}
+      {!loading && filteredWorks.length > 1 && (
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 text-zinc-500 flex items-center gap-4 animate-pulse pointer-events-none z-50">
+          <span className="text-[10px] tracking-[0.3em] uppercase font-serif">Swipe to Explore</span>
+          <ArrowRight size={14} className="opacity-70" />
+        </div>
       )}
 
       {/* 沉浸式燈箱 (Lightbox) */}
@@ -207,13 +211,6 @@ export default function GalleryPage() {
           </motion.div>
         )}
       </AnimatePresence>
-      {/* 💡 橫向滑動提示 (加上這個，訪客才懂怎麼逛展廳) */}
-      {!loading && filteredWorks.length > 1 && (
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 text-zinc-500 flex items-center gap-4 animate-pulse pointer-events-none z-50">
-          <span className="text-[10px] tracking-[0.3em] uppercase font-serif">Swipe to Explore</span>
-          <ArrowRight size={14} className="opacity-70" />
-        </div>
-      )}
     </main>
   );
 }
