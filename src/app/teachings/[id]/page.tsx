@@ -55,7 +55,7 @@ export default function ArticlePage() {
         </Link>
       </header>
 
-      {/* 封面視覺 */}
+      {/*  封面視覺 */}
       {article.coverImage && (
         <div className="relative w-full h-[50vh] md:h-[70vh] bg-zinc-900">
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent z-10" />
