@@ -207,6 +207,13 @@ export default function GalleryPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* 💡 橫向滑動提示 (加上這個，訪客才懂怎麼逛展廳) */}
+      {!loading && filteredWorks.length > 1 && (
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 text-zinc-500 flex items-center gap-4 animate-pulse pointer-events-none z-50">
+          <span className="text-[10px] tracking-[0.3em] uppercase font-serif">Swipe to Explore</span>
+          <ArrowRight size={14} className="opacity-70" />
+        </div>
+      )}
     </main>
   );
 }
