@@ -11,7 +11,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Camera, LogOut, UploadCloud, Image as ImageIcon, BookOpen, Calendar, Settings, Plus, Trash2, User as UserIcon, Edit2, EyeOff, Eye, X, Video, Play } from "lucide-react";
 
-// 動態載入 ReactQuill (支援 React 19)，關閉 SSR
+// 動態載入 ReactQuill，關閉 SSR
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
 import "react-quill-new/dist/quill.snow.css";
 
@@ -72,6 +72,10 @@ export default function AdminDashboard() {
   const [teachPreviewUrl, setTeachPreviewUrl] = useState<string | null>(null);
   const [teachUploading, setTeachUploading] = useState(false);
 
+  // 💡 自動萃取歷史紀錄中的「所有系列」與「所有標籤」
+  const existingSeries = Array.from(new Set(teachList.map(t => t.seriesName).filter(Boolean)));
+  const existingTags = Array.from(new Set(teachList.flatMap(t => t.tags || []))).filter(Boolean);
+
   // === 初始化載入 ===
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => setUser(currentUser));
@@ -122,7 +126,6 @@ export default function AdminDashboard() {
     try { await signInWithEmailAndPassword(auth, email, password); } catch (e) { alert("登入失敗"); }
   };
 
-  // 統一圖片選擇處理
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: "gallery" | "news" | "teachings" | "profile") => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
@@ -223,6 +226,14 @@ export default function AdminDashboard() {
     setEditingTeachId(null); setTeachTitle(""); setTeachTags(""); setTeachSeries(""); setTeachChapter(""); setTeachVideoUrl(""); setTeachContent(""); setTeachFile(null); setTeachPreviewUrl(null); setTeachIsArchived(false);
   };
 
+  // 💡 一鍵加入歷史標籤的功能
+  const handleQuickAddTag = (tag: string) => {
+    const currentTags = teachTags.split(',').map(t => t.trim()).filter(Boolean);
+    if (!currentTags.includes(tag)) {
+      setTeachTags(currentTags.length > 0 ? `${currentTags.join(', ')}, ${tag}` : tag);
+    }
+  };
+
   const handleTeachSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!teachTitle || !teachContent) return alert("請填寫標題與內容");
@@ -293,7 +304,7 @@ export default function AdminDashboard() {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center font-serif">
         <Camera size={48} className="mb-8 opacity-70" strokeWidth={1} />
-        <h1 className="text-2xl tracking-[0.2em] mb-8">System Login</h1>
+        <h1 className="text-2xl tracking-[0.2em] mb-8 uppercase font-light">System Login</h1>
         <form onSubmit={handleLogin} className="flex flex-col gap-6 w-80">
           <input type="email" placeholder="Email" value={email} onChange={(e)=>setEmail(e.target.value)} className="bg-transparent border-b border-zinc-700 pb-2 outline-none focus:border-white transition-colors" required />
           <input type="password" placeholder="Password" value={password} onChange={(e)=>setPassword(e.target.value)} className="bg-transparent border-b border-zinc-700 pb-2 outline-none focus:border-white transition-colors" required />
@@ -305,6 +316,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex overflow-hidden">
+      {/* 側邊選單 */}
       <aside className="w-64 border-r border-zinc-800 p-8 flex flex-col justify-between hidden md:flex bg-black z-10 shrink-0">
         <div>
           <h1 className="font-serif text-lg tracking-[0.2em] mb-12 text-zinc-400 uppercase">PETERPENN<br/><span className="text-xs">Admin Panel</span></h1>
@@ -320,9 +332,156 @@ export default function AdminDashboard() {
 
       <main className="flex-1 p-8 md:p-16 h-screen overflow-y-auto relative">
         
+        {/* === 模組：教學文章 CMS (升級版) === */}
+        {activeTab === "teachings" && (
+          <div className="max-w-5xl mx-auto space-y-16 pb-20">
+            <section>
+              <header className="mb-12 border-b border-zinc-800 pb-6 flex justify-between items-end">
+                <div>
+                  <h2 className="text-2xl font-serif tracking-widest uppercase">{editingTeachId ? "編輯文章" : "撰寫教學文章"}</h2>
+                  <p className="text-zinc-500 text-sm mt-2 tracking-widest font-serif italic">大師筆記：透過文字、影像與視頻分享攝影心法。</p>
+                </div>
+                {editingTeachId && (
+                  <button onClick={resetTeachForm} className="flex items-center gap-2 text-xs text-zinc-400 hover:text-white border border-zinc-700 px-4 py-2 transition-colors uppercase"><X size={14}/> 取消編輯</button>
+                )}
+              </header>
+
+              <form onSubmit={handleTeachSubmit} className="space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="lg:col-span-2 space-y-6">
+                    {editingTeachId && (
+                      <div className="flex items-center justify-between bg-zinc-900 border border-zinc-800 p-4">
+                        <span className="text-xs text-zinc-400 tracking-widest">顯示狀態：</span>
+                        <button type="button" onClick={() => setTeachIsArchived(!teachIsArchived)} className={`flex items-center gap-2 text-xs px-3 py-1 border transition-colors ${teachIsArchived ? 'border-amber-500/50 text-amber-500 bg-amber-500/10' : 'border-emerald-500/50 text-emerald-500 bg-emerald-500/10'}`}>
+                          {teachIsArchived ? <><EyeOff size={14}/> 封存</> : <><Eye size={14}/> 發佈中</>}
+                        </button>
+                      </div>
+                    )}
+                    
+                    <input type="text" placeholder="文章標題 TITLE" value={teachTitle} onChange={(e)=>setTeachTitle(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-3 outline-none focus:border-zinc-500" required />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* 💡 系列名稱加入 datalist 自動完成功能 */}
+                      <input 
+                        type="text" 
+                        list="series-options"
+                        placeholder="所屬系列 (點擊下拉或手動輸入)" 
+                        value={teachSeries} 
+                        onChange={(e)=>setTeachSeries(e.target.value)} 
+                        className="w-full bg-zinc-900 border border-zinc-800 p-3 outline-none focus:border-zinc-500" 
+                      />
+                      <datalist id="series-options">
+                        {existingSeries.map(s => <option key={s as string} value={s as string} />)}
+                      </datalist>
+
+                      <input type="number" placeholder="章節序號 (如：1)" value={teachChapter} onChange={(e)=>setTeachChapter(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-3 outline-none focus:border-zinc-500" />
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 p-3">
+                      <Video size={18} className="text-red-500 shrink-0" />
+                      <input type="url" placeholder="YouTube 影片網址 (選填)" value={teachVideoUrl} onChange={(e)=>setTeachVideoUrl(e.target.value)} className="flex-1 bg-transparent outline-none text-zinc-300" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <select value={teachCategory} onChange={(e)=>setTeachCategory(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-3 outline-none focus:border-zinc-500">
+                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <div>
+                        <input type="text" placeholder="標籤 (用逗號隔開)" value={teachTags} onChange={(e)=>setTeachTags(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-3 outline-none focus:border-zinc-500" />
+                        
+                        {/* 💡 常用標籤快選按鈕 */}
+                        {existingTags.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="text-[10px] text-zinc-500 tracking-widest mt-1">常用：</span>
+                            {existingTags.map(tag => (
+                              <button 
+                                key={tag as string} 
+                                type="button" 
+                                onClick={() => handleQuickAddTag(tag as string)}
+                                className="text-[10px] border border-zinc-700 px-2 py-0.5 text-zinc-400 hover:text-white hover:border-zinc-400 transition-colors"
+                              >
+                                +{tag as string}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="block text-xs text-zinc-500 tracking-widest uppercase">封面圖片 (Cover)</label>
+                    <div className="bg-zinc-900/50 border border-zinc-800 flex flex-col items-center justify-center p-4 h-[250px]">
+                      {teachPreviewUrl ? (
+                        <div className="relative w-full h-full"><Image src={teachPreviewUrl} alt="Cover" fill className="object-contain" /></div>
+                      ) : (
+                        <div className="text-zinc-600 flex flex-col items-center"><ImageIcon size={32} className="mb-2 opacity-20" /><span className="text-xs">選擇封面</span></div>
+                      )}
+                    </div>
+                    <input type="file" accept="image/*" onChange={(e)=>handleFileSelect(e,"teachings")} className="w-full text-xs text-zinc-500" />
+                  </div>
+                </div>
+
+                <div className="bg-white text-black min-h-[500px] overflow-hidden rounded-sm">
+                  {/* 💡 擴充 ReactQuill 的工具列 */}
+                  <ReactQuill 
+                    theme="snow" 
+                    value={teachContent} 
+                    onChange={setTeachContent} 
+                    className="h-[450px]" 
+                    modules={{
+                      toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+                        [{'list': 'ordered'}, {'list': 'bullet'}],
+                        [{ 'align': [] }], // 💡 置中、靠右對齊
+                        [{ 'color': [] }, { 'background': [] }], // 💡 文字與背景顏色
+                        ['link', 'image', 'video'], // 💡 圖片與外部影片插入
+                        ['clean']
+                      ],
+                    }}
+                  />
+                </div>
+
+                <button disabled={teachUploading} className="w-full flex items-center justify-center gap-3 bg-white text-black py-4 hover:bg-zinc-200 uppercase tracking-widest transition-colors font-bold">
+                  <UploadCloud size={18} /> {teachUploading ? "上傳中..." : (editingTeachId ? "更新文章" : "正式發佈教學")}
+                </button>
+              </form>
+            </section>
+
+            {/* 歷史列表 */}
+            <section className="border-t border-zinc-800 pt-16">
+              <h3 className="text-xl font-serif tracking-widest uppercase mb-8">歷史教學列表</h3>
+              <div className="space-y-4">
+                {teachList.map((item) => (
+                  <div key={item.id} className={`flex items-center justify-between p-4 border transition-colors ${item.isArchived ? 'bg-zinc-950 border-zinc-900 opacity-60' : 'bg-zinc-900/30 border-zinc-800'}`}>
+                    <div className="flex items-center gap-6">
+                      <div className="relative w-16 h-12 bg-black border border-zinc-800 shrink-0">
+                        {item.coverImage && <Image src={item.coverImage} alt="P" fill className="object-cover" />}
+                      </div>
+                      <div className="font-serif">
+                        <div className="flex items-center gap-3 mb-1">
+                          {item.isArchived ? <span className="bg-zinc-800 text-zinc-500 text-[10px] px-2 py-0.5">封存</span> : <span className="bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 text-[10px] px-2 py-0.5">發佈中</span>}
+                          {item.videoUrl && <Play size={12} className="text-red-500" />}
+                          <span className="text-xs text-zinc-500 uppercase">{item.category}</span>
+                        </div>
+                        <h4 className="text-base text-zinc-200 tracking-widest">{item.title}</h4>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleEditTeach(item)} className="p-2 text-zinc-500 hover:text-white bg-zinc-800 rounded"><Edit2 size={16} /></button>
+                      <button onClick={async () => {if(confirm("確定刪除?")){await deleteDoc(doc(db,"teachings",item.id)); fetchTeachList();}}} className="p-2 text-zinc-500 hover:text-red-500 bg-zinc-800 rounded"><Trash2 size={16} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+
         {/* === 模組：系統設置 === */}
         {activeTab === "settings" && (
-          <div className="max-w-4xl mx-auto space-y-16">
+          <div className="max-w-4xl mx-auto space-y-16 pb-20">
             <header className="border-b border-zinc-800 pb-6"><h2 className="text-2xl font-serif tracking-widest uppercase">系統全域設置 (Settings)</h2></header>
             <section className="grid grid-cols-1 md:grid-cols-2 gap-12">
               <div className="space-y-6">
@@ -368,7 +527,6 @@ export default function AdminDashboard() {
               <header className="mb-12 border-b border-zinc-800 pb-6 flex justify-between items-end">
                 <div>
                   <h2 className="text-2xl font-serif tracking-widest uppercase">{editingGalleryId ? "編輯作品" : "發佈新作品"}</h2>
-                  <p className="text-zinc-500 text-sm mt-2 tracking-widest">支援作品資訊修改、刪除與封存。</p>
                 </div>
                 {editingGalleryId && (
                   <button onClick={resetGalleryForm} className="flex items-center gap-2 text-xs text-zinc-400 hover:text-white border border-zinc-700 px-4 py-2 transition-colors uppercase"><X size={14}/> 取消編輯</button>
@@ -397,7 +555,6 @@ export default function AdminDashboard() {
                   <button disabled={uploading} className="w-full flex items-center justify-center gap-3 bg-white text-black py-4 hover:bg-zinc-200 uppercase tracking-widest transition-colors"><UploadCloud size={18} /> {uploading ? `處理中... ${Math.round(progress)}%` : (editingGalleryId ? "更新作品" : "發佈作品")}</button>
                 </form>
                 <div className="bg-zinc-900/50 border border-zinc-800 flex items-center justify-center p-6 min-h-[400px]">
-                  {/* 💡 Gallery 預覽改為 object-contain 防止砍頭砍尾 */}
                   {previewUrl ? <div className="relative w-full max-w-[280px] aspect-[3/4] bg-black shadow-2xl"><Image src={previewUrl} alt="Preview" fill className="object-contain" /></div> : <div className="text-zinc-600 flex flex-col items-center"><ImageIcon size={48} className="mb-4 opacity-20" /><span className="text-sm tracking-widest font-serif">選擇圖片預覽</span></div>}
                 </div>
               </div>
@@ -423,105 +580,6 @@ export default function AdminDashboard() {
                     <div className="flex items-center gap-2">
                       <button onClick={() => handleEditGallery(item)} className="p-2 text-zinc-500 hover:text-white bg-zinc-800 rounded transition-colors"><Edit2 size={16} /></button>
                       <button onClick={async () => {if(confirm("確定刪除?")){await deleteDoc(doc(db,"works",item.id)); fetchGalleryList();}}} className="p-2 text-zinc-500 hover:text-red-500 bg-zinc-800 rounded transition-colors"><Trash2 size={16} /></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-        )}
-
-        {/* === 模組：教學文章 CMS === */}
-        {activeTab === "teachings" && (
-          <div className="max-w-5xl mx-auto space-y-16 pb-20">
-            <section>
-              <header className="mb-12 border-b border-zinc-800 pb-6 flex justify-between items-end">
-                <div>
-                  <h2 className="text-2xl font-serif tracking-widest uppercase">{editingTeachId ? "編輯文章" : "撰寫教學文章"}</h2>
-                  <p className="text-zinc-500 text-sm mt-2 tracking-widest">大師筆記：透過文字、影像與視頻分享攝影心法。</p>
-                </div>
-                {editingTeachId && (
-                  <button onClick={resetTeachForm} className="flex items-center gap-2 text-xs text-zinc-400 hover:text-white border border-zinc-700 px-4 py-2 transition-colors uppercase"><X size={14}/> 取消編輯</button>
-                )}
-              </header>
-
-              <form onSubmit={handleTeachSubmit} className="space-y-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  <div className="lg:col-span-2 space-y-6">
-                    {editingTeachId && (
-                      <div className="flex items-center justify-between bg-zinc-900 border border-zinc-800 p-4">
-                        <span className="text-xs text-zinc-400 tracking-widest">顯示狀態：</span>
-                        <button type="button" onClick={() => setTeachIsArchived(!teachIsArchived)} className={`flex items-center gap-2 text-xs px-3 py-1 border transition-colors ${teachIsArchived ? 'border-amber-500/50 text-amber-500 bg-amber-500/10' : 'border-emerald-500/50 text-emerald-500 bg-emerald-500/10'}`}>
-                          {teachIsArchived ? <><EyeOff size={14}/> 封存</> : <><Eye size={14}/> 發佈中</>}
-                        </button>
-                      </div>
-                    )}
-                    
-                    <input type="text" placeholder="文章標題 TITLE" value={teachTitle} onChange={(e)=>setTeachTitle(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-3 outline-none focus:border-zinc-500" required />
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <input type="text" placeholder="所屬系列 (如：雋美黑白)" value={teachSeries} onChange={(e)=>setTeachSeries(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-3 outline-none focus:border-zinc-500" />
-                      <input type="number" placeholder="章節序號 (如：1)" value={teachChapter} onChange={(e)=>setTeachChapter(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-3 outline-none focus:border-zinc-500" />
-                    </div>
-
-                    <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 p-3">
-                      <Video size={18} className="text-red-500 shrink-0" />
-                      <input type="url" placeholder="YouTube 影片網址 (選填，如：採訪或教學視頻)" value={teachVideoUrl} onChange={(e)=>setTeachVideoUrl(e.target.value)} className="flex-1 bg-transparent outline-none text-zinc-300" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <select value={teachCategory} onChange={(e)=>setTeachCategory(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-3 outline-none focus:border-zinc-500">
-                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                      <input type="text" placeholder="標籤 (用逗號隔開)" value={teachTags} onChange={(e)=>setTeachTags(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-3 outline-none focus:border-zinc-500" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="block text-xs text-zinc-500 tracking-widest uppercase">封面圖片 (Cover)</label>
-                    <div className="bg-zinc-900/50 border border-zinc-800 flex flex-col items-center justify-center p-4 h-[250px]">
-                      {/* 💡 預覽改為 object-contain 防止砍頭砍尾 */}
-                      {teachPreviewUrl ? (
-                        <div className="relative w-full h-full"><Image src={teachPreviewUrl} alt="Cover" fill className="object-contain" /></div>
-                      ) : (
-                        <div className="text-zinc-600 flex flex-col items-center"><ImageIcon size={32} className="mb-2 opacity-20" /><span className="text-xs">選擇封面</span></div>
-                      )}
-                    </div>
-                    <input type="file" accept="image/*" onChange={(e)=>handleFileSelect(e,"teachings")} className="w-full text-xs text-zinc-500" />
-                  </div>
-                </div>
-
-                <div className="bg-white text-black min-h-[500px] overflow-hidden rounded-sm">
-                  <ReactQuill theme="snow" value={teachContent} onChange={setTeachContent} className="h-[450px]" />
-                </div>
-
-                <button disabled={teachUploading} className="w-full flex items-center justify-center gap-3 bg-white text-black py-4 hover:bg-zinc-200 uppercase tracking-widest transition-colors font-bold">
-                  <UploadCloud size={18} /> {teachUploading ? "上傳中..." : (editingTeachId ? "更新文章" : "正式發佈教學")}
-                </button>
-              </form>
-            </section>
-
-            <section className="border-t border-zinc-800 pt-16">
-              <h3 className="text-xl font-serif tracking-widest uppercase mb-8">歷史教學列表</h3>
-              <div className="space-y-4">
-                {teachList.map((item) => (
-                  <div key={item.id} className={`flex items-center justify-between p-4 border transition-colors ${item.isArchived ? 'bg-zinc-950 border-zinc-900 opacity-60' : 'bg-zinc-900/30 border-zinc-800'}`}>
-                    <div className="flex items-center gap-6">
-                      <div className="relative w-16 h-12 bg-black border border-zinc-800 shrink-0">
-                        {item.coverImage && <Image src={item.coverImage} alt="P" fill className="object-cover" />}
-                      </div>
-                      <div className="font-serif">
-                        <div className="flex items-center gap-3 mb-1">
-                          {item.isArchived ? <span className="bg-zinc-800 text-zinc-500 text-[10px] px-2 py-0.5">封存</span> : <span className="bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 text-[10px] px-2 py-0.5">發佈中</span>}
-                          {item.videoUrl && <Play size={12} className="text-red-500" />}
-                          <span className="text-xs text-zinc-500 uppercase">{item.category}</span>
-                        </div>
-                        <h4 className="text-base text-zinc-200 tracking-widest">{item.title}</h4>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => handleEditTeach(item)} className="p-2 text-zinc-500 hover:text-white bg-zinc-800 rounded"><Edit2 size={16} /></button>
-                      <button onClick={async () => {if(confirm("確定刪除?")){await deleteDoc(doc(db,"teachings",item.id)); fetchTeachList();}}} className="p-2 text-zinc-500 hover:text-red-500 bg-zinc-800 rounded"><Trash2 size={16} /></button>
                     </div>
                   </div>
                 ))}
@@ -583,7 +641,6 @@ export default function AdminDashboard() {
                 </form>
                 
                 <div className="bg-zinc-900/50 border border-zinc-800 flex items-center justify-center p-6 min-h-[400px]">
-                  {/* 💡 News 預覽也改為 object-contain */}
                   {newsPreviewUrl ? (
                     <div className="relative w-full max-h-[400px] aspect-[3/4] bg-black shadow-2xl"><Image src={newsPreviewUrl} alt="Preview" fill className="object-contain" /></div>
                   ) : (
