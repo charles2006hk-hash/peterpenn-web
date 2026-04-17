@@ -9,7 +9,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import imageCompression from "browser-image-compression";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Camera, LogOut, UploadCloud, Image as ImageIcon, BookOpen, Calendar, Settings, Plus, Trash2, User as UserIcon, Edit2, EyeOff, Eye, X, Youtube } from "lucide-react";
+import { Camera, LogOut, UploadCloud, Image as ImageIcon, BookOpen, Calendar, Settings, Plus, Trash2, User as UserIcon, Edit2, EyeOff, Eye, X, Video, Play } from "lucide-react";
 
 // 動態載入 ReactQuill (支援 React 19)，關閉 SSR
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
@@ -465,7 +465,7 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 p-3">
-                      <Youtube size={18} className="text-red-500 shrink-0" />
+                      <Video size={18} className="text-red-500 shrink-0" />
                       <input type="url" placeholder="YouTube 影片網址 (選填，如：採訪或教學視頻)" value={teachVideoUrl} onChange={(e)=>setTeachVideoUrl(e.target.value)} className="flex-1 bg-transparent outline-none text-zinc-300" />
                     </div>
 
@@ -568,7 +568,7 @@ export default function AdminDashboard() {
                   <input type="text" placeholder="地點 LOCATION" value={newsLocation} onChange={(e) => setNewsLocation(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-3 outline-none focus:border-zinc-500" />
                   
                   <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 p-3">
-                    <Youtube size={18} className="text-red-500 shrink-0" />
+                    <Video size={18} className="text-red-500 shrink-0" />
                     <input type="url" placeholder="YouTube 影片網址 (選填)" value={newsVideoUrl} onChange={(e)=>setNewsVideoUrl(e.target.value)} className="flex-1 bg-transparent outline-none text-zinc-300" />
                   </div>
 
