@@ -513,7 +513,7 @@ export default function AdminDashboard() {
                       <div className="font-serif">
                         <div className="flex items-center gap-3 mb-1">
                           {item.isArchived ? <span className="bg-zinc-800 text-zinc-500 text-[10px] px-2 py-0.5">封存</span> : <span className="bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 text-[10px] px-2 py-0.5">發佈中</span>}
-                          {item.videoUrl && <Youtube size={12} className="text-red-500" />}
+                          {item.videoUrl && <Play size={12} className="text-red-500" />}
                           <span className="text-xs text-zinc-500 uppercase">{item.category}</span>
                         </div>
                         <h4 className="text-base text-zinc-200 tracking-widest">{item.title}</h4>
@@ -601,7 +601,7 @@ export default function AdminDashboard() {
                     <div className="flex-1 font-serif">
                       <div className="flex items-center gap-3 mb-2">
                         {item.isArchived ? <span className="bg-zinc-800 text-zinc-500 text-[10px] px-2 py-0.5">封存</span> : <span className="bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 text-[10px] px-2 py-0.5">顯示中</span>}
-                        {item.videoUrl && <Youtube size={12} className="text-red-500" />}
+                        {item.videoUrl && <Play size={12} className="text-red-500" />}
                         <span className="text-xs text-zinc-400">{item.date} {item.endDate && `- ${item.endDate}`}</span>
                       </div>
                       <h4 className="text-lg text-zinc-200 tracking-widest">{item.title}</h4>
