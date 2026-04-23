@@ -38,12 +38,12 @@ export default function GalleryPage() {
     fetchAlbums();
   }, []);
 
-  // 2. 點擊系列：抓取相片 (含自動除錯邏輯)
+  // 2. 點擊系列：抓取相片
   const handleSelectAlbum = async (album: any) => {
     setSelectedAlbum(album);
     setLoadingPhotos(true);
     setActiveIndex(0);
-    setPhotos([]); // 先清空舊照片防止閃爍
+    setPhotos([]); 
 
     try {
       // 嘗試標準排序查詢
@@ -55,8 +55,7 @@ export default function GalleryPage() {
       const snap = await getDocs(q);
       
       if (snap.empty) {
-        // 💡 降級邏輯：如果沒結果，嘗試不帶排序的查詢 (防止 order 欄位缺失導致的空結果)
-        console.warn("排序查詢無結果，嘗試基礎查詢...");
+        // 降級邏輯：防止因為尚未建立索引而抓不到資料
         const fallbackQ = query(collection(db, "photos"), where("albumId", "==", album.id));
         const fallbackSnap = await getDocs(fallbackQ);
         setPhotos(fallbackSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -64,8 +63,7 @@ export default function GalleryPage() {
         setPhotos(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       }
     } catch (error) {
-      console.error("無法載入相片:", error);
-      // 極端情況下再次降級
+      // 緊急降級：攔截 Firebase 尚未建立複合索引的紅字錯誤
       const emergencyQ = query(collection(db, "photos"), where("albumId", "==", album.id));
       const emergencySnap = await getDocs(emergencyQ);
       setPhotos(emergencySnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -74,7 +72,7 @@ export default function GalleryPage() {
     }
   };
 
-  // 3. 追蹤中央照片的魔法 (交叉觀察器)
+  // 3. 追蹤中央照片的交叉觀察器
   useEffect(() => {
     if (!selectedAlbum || photos.length === 0 || !scrollContainerRef.current) return;
     const observer = new IntersectionObserver(
@@ -130,7 +128,7 @@ export default function GalleryPage() {
         )}
       </header>
 
-      {/* === 視圖 A：Gallery 首頁 (改良：不裁切相框) === */}
+      {/* === 視圖 A：Gallery 首頁 (不裁切相框) === */}
       {!selectedAlbum && (
         <section className="relative z-10 h-screen w-full">
           {loadingAlbums ? (
@@ -148,7 +146,6 @@ export default function GalleryPage() {
                     className="relative z-10 w-full cursor-pointer group"
                     onClick={() => handleSelectAlbum(album)}
                   >
-                    {/* 💡 相框改良：使用 object-contain 確保橫直圖都不會被 crop */}
                     <div className="relative w-full aspect-[3/4] bg-zinc-900 shadow-[0_30px_60px_rgba(0,0,0,0.9)] overflow-hidden flex items-center justify-center">
                       {album.coverImage ? (
                         <Image 
@@ -180,7 +177,7 @@ export default function GalleryPage() {
         </section>
       )}
 
-      {/* === 視圖 B：系列內部相片 (中央觸發彩色特效) === */}
+      {/* === 視圖 B：系列內部相片 (💡 修正：給予明確畫布寬度) === */}
       {selectedAlbum && (
         <section className="relative z-10 h-screen w-full">
           {loadingPhotos ? (
@@ -198,11 +195,17 @@ export default function GalleryPage() {
               ref={scrollContainerRef}
             >
               {photos.map((photo, index) => (
-                <div key={photo.id} data-index={index} className="photo-item relative flex flex-col items-center justify-center shrink-0 w-[75vw] md:w-auto h-[60vh] md:h-[75vh] snap-center cursor-zoom-in" onClick={() => setSelectedLightboxPhoto(photo)}>
+                <div 
+                  key={photo.id} 
+                  data-index={index} 
+                  // 💡 修復重點：移除 md:w-auto，改用固定寬度畫布 md:w-[70vw] 搭配 max-w-[1000px]
+                  className="photo-item relative flex flex-col items-center justify-center shrink-0 w-[85vw] md:w-[70vw] max-w-[1000px] h-[60vh] md:h-[75vh] snap-center cursor-zoom-in" 
+                  onClick={() => setSelectedLightboxPhoto(photo)}
+                >
                   <div className={`relative h-full w-full transition-all duration-700 ease-out flex justify-center items-center ${
                     activeIndex === index ? 'grayscale-0 opacity-100 scale-100 shadow-[0_40px_100px_rgba(0,0,0,0.9)]' : 'grayscale opacity-20 scale-90'
                   }`}>
-                    {/* 💡 內部照片也確保 object-contain */}
+                    {/* object-contain 會在我們給的畫布內自動縮放比例，絕不裁切 */}
                     <Image src={photo.imageUrl} alt="P" fill className="object-contain" priority={index < 3} />
                   </div>
                 </div>
