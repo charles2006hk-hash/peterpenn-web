@@ -10,6 +10,14 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
+// 💡 解析 YouTube ID 的魔法函數
+const getYouTubeID = (url: string) => {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
 export default function ArticlePage() {
   const params = useParams();
   const [article, setArticle] = useState<any>(null);
@@ -25,7 +33,7 @@ export default function ArticlePage() {
           setArticle({ id: docSnap.id, ...docSnap.data() });
         }
       } catch (error) {
-        console.error("無法載入文章:", error);
+        console.error("無法載入內容:", error);
       } finally {
         setLoading(false);
       }
@@ -38,11 +46,10 @@ export default function ArticlePage() {
   }
 
   if (!article) {
-    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-zinc-500 font-serif tracking-widest">找不到該文章。</div>;
+    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-zinc-500 font-serif tracking-widest">找不到該內容。</div>;
   }
 
-  // 格式化日期
-  const publishDate = article.createdAt?.toDate ? article.createdAt.toDate().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }) : "未知日期";
+  const publishDate = article.createdAt?.toDate ? article.createdAt.toDate().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }) : "";
 
   return (
     <main className="relative min-h-screen bg-[#0a0a0a] text-white selection:bg-white selection:text-black">
@@ -50,26 +57,26 @@ export default function ArticlePage() {
 
       {/* 頂部導航 */}
       <header className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center w-full px-6 py-6 mix-blend-difference bg-gradient-to-b from-black/80 to-transparent">
-        <Link href="/teachings" className="flex items-center gap-2 hover:text-zinc-400 transition-colors font-serif tracking-widest text-sm uppercase">
-          <ArrowLeft size={16} /> Back to Teachings
+        <Link href="/teachings" className="flex items-center gap-2 hover:text-zinc-400 transition-colors font-serif tracking-widest text-xs md:text-sm uppercase">
+          <ArrowLeft size={16} /> Back
         </Link>
       </header>
 
-      {/*  封面視覺 */}
+      {/* 封面視覺 */}
       {article.coverImage && (
         <div className="relative w-full h-[50vh] md:h-[70vh] bg-zinc-900">
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent z-10" />
-          <Image src={article.coverImage} alt={article.title} fill className="object-contain grayscale" priority />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-black/50 to-transparent z-10" />
+          <Image src={article.coverImage} alt={article.title} fill className="object-cover grayscale" priority />
         </div>
       )}
 
       {/* 文章內容區塊 */}
-      <article className="relative z-20 max-w-3xl mx-auto px-6 pt-16 pb-32 -mt-32 md:-mt-48">
-        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1 }} className="bg-[#0a0a0a] p-8 md:p-12 border border-zinc-900 shadow-2xl">
+      <article className="relative z-20 max-w-4xl mx-auto px-4 sm:px-6 pt-16 pb-32 -mt-32 md:-mt-48">
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1 }} className="bg-[#0a0a0a] p-6 md:p-12 lg:p-16 border border-zinc-900 shadow-2xl">
           
           {/* 文章 Meta 資訊 */}
           <div className="text-[10px] md:text-xs text-zinc-500 tracking-[0.2em] mb-8 flex flex-wrap gap-4 uppercase font-serif">
-            <span>{publishDate}</span>
+            {publishDate && <span>{publishDate}</span>}
             <span className="text-zinc-700">|</span>
             <span className="text-zinc-300">{article.category}</span>
             {article.seriesName && (
@@ -80,13 +87,26 @@ export default function ArticlePage() {
             )}
           </div>
 
-          <h1 className="text-3xl md:text-5xl font-serif tracking-widest leading-tight mb-12 text-zinc-100">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif tracking-widest leading-normal md:leading-tight mb-12 text-zinc-100">
             {article.title}
           </h1>
 
-          {/* 富文本渲染核心 (使用 CSS 控制後台圖文編輯器產生的 HTML 排版) */}
+          {/* 💡 YouTube 影音播放器 */}
+          {article.videoUrl && getYouTubeID(article.videoUrl) && (
+            <div className="mb-16 w-full aspect-video bg-black shadow-2xl border border-zinc-800">
+              <iframe
+                className="w-full h-full"
+                src={`https://www.youtube.com/embed/${getYouTubeID(article.videoUrl)}`}
+                title="YouTube Video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+          )}
+
+          {/* 富文本內容渲染 */}
           <div 
-            className="font-serif leading-loose tracking-wide text-zinc-300 text-sm md:text-base text-justify space-y-8
+            className="font-serif leading-loose tracking-wide text-zinc-300 text-sm md:text-base text-justify space-y-6
               [&>p]:mb-6 [&>h1]:text-2xl [&>h1]:text-white [&>h1]:mt-12 [&>h1]:mb-6
               [&>h2]:text-xl [&>h2]:text-white [&>h2]:mt-10 [&>h2]:mb-4
               [&>h3]:text-lg [&>h3]:text-white [&>h3]:mt-8 [&>h3]:mb-4
@@ -98,15 +118,16 @@ export default function ArticlePage() {
           />
 
           {/* 文章底部標籤 */}
-          <div className="mt-20 pt-8 border-t border-zinc-900 flex flex-wrap gap-3">
-            {article.tags?.map((tag: string) => (
-              <span key={tag} className="text-zinc-600 text-xs tracking-widest uppercase bg-zinc-900/50 px-3 py-1">#{tag}</span>
-            ))}
-          </div>
+          {article.tags && article.tags.length > 0 && (
+            <div className="mt-20 pt-8 border-t border-zinc-900 flex flex-wrap gap-3">
+              {article.tags.map((tag: string) => (
+                <span key={tag} className="text-zinc-600 text-xs tracking-widest uppercase bg-zinc-900/50 px-3 py-1">#{tag}</span>
+              ))}
+            </div>
+          )}
 
         </motion.div>
       </article>
-
     </main>
   );
 }
