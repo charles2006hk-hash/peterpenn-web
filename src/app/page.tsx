@@ -173,7 +173,7 @@ export default function Home() {
           </p>
           
           <form action="https://api.web3forms.com/submit" method="POST" className="space-y-6 text-left">
-            <input type="hidden" name="access_key" value="YOUR_ACCESS_KEY_HERE" />
+            <input type="hidden" name="access_key" value="9826665b-ab6c-4e5c-89b8-1d5b13dfe4fa" />
             <input type="hidden" name="subject" value="來自 PETERPENN POON 官網的新訊息" />
             <input type="hidden" name="redirect" value="https://peterpenn.com" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
