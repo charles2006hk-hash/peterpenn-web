@@ -1,27 +1,49 @@
 // src/app/layout.tsx
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
 
+const inter = Inter({ subsets: ['latin'] })
+
+// 💡 網站轉發與 SEO 核心設定區
 export const metadata: Metadata = {
-  title: "PETERPENN POON 潘少君 | 官方網站與線上展廳",
-  description: "從事商業攝影逾四十載，專精珠寶首飾的光影雕琢。潘少君提倡不依賴器材，回歸光影本質，以獨特的「攝影眼」洞見黑白光影的極致美學。",
-  keywords: ["Peterpenn Poon", "Peterpenn", "潘少君", "香港攝影大師", "黑白攝影", "攝影眼", "紀實攝影", "珠寶攝影", "DCFever", "Sigma"],
-  authors: [{ name: "Peterpenn Poon" }],
+  title: 'PETERPENN POON | 潘少君',
+  description: '40年商業攝影底蘊 × 10載藝術紀實探索。以「攝影眼」洞見黑白光影的極致美學。',
+  keywords: ['潘少君', 'Peterpenn Poon', '攝影', '黑白攝影', '攝影眼', '藝術紀實', '商業攝影', 'Photography'],
+  metadataBase: new URL('https://peterpenn.com'),
   openGraph: {
-    title: "PETERPENN POON 潘少君 | 攝影眼與黑白美學",
-    description: "40年商業攝影底蘊 × 10載藝術紀實探索。探索線上展廳與最新講座動態。",
-    url: "https://peterpenn.com", 
-    siteName: "PETERPENN POON Official Gallery",
-    locale: "zh_HK",
-    type: "website",
+    title: 'PETERPENN POON | 潘少君',
+    description: '40年商業攝影底蘊 × 10載藝術紀實探索。以「攝影眼」洞見黑白光影的極致美學。',
+    url: 'https://peterpenn.com',
+    siteName: 'PETERPENN POON Gallery',
+    images: [
+      {
+        // 💡 稍後你可以挑選一張最具代表性的照片，命名為 og-image.jpg，放進專案的 public 資料夾裡
+        url: '/og-image.jpg', 
+        width: 1200,
+        height: 630,
+        alt: 'PETERPENN POON 攝影作品',
+      },
+    ],
+    locale: 'zh_TW',
+    type: 'website',
   },
-  robots: { index: true, follow: true },
-};
+  twitter: {
+    card: 'summary_large_image',
+    title: 'PETERPENN POON | 潘少君',
+    description: '以「攝影眼」洞見黑白光影的極致美學。',
+    images: ['/og-image.jpg'],
+  },
+}
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang="zh-HK">
-      <body className="antialiased bg-black text-white">{children}</body>
+    <html lang="zh-TW" className="scroll-smooth">
+      <body className={inter.className}>{children}</body>
     </html>
-  );
+  )
 }
