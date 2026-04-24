@@ -61,19 +61,20 @@ export default function Home() {
     }
   }, [notifications.length]);
 
-  // 💡 升級版非同步 (AJAX) 表單傳送邏輯：使用 JSON 格式
+  // 💡 終極版：解決 400 Bad Request 與資料遺失問題
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setIsSuccess(false);
 
-    // 1. 將表單資料轉換為 JSON 物件
+    // 1. 【關鍵修正】必須在鎖定表單前，先把資料抓出來！
     const formData = new FormData(e.currentTarget);
     const object = Object.fromEntries(formData.entries());
     const json = JSON.stringify(object);
 
+    // 2. 現在才開始鎖定表單按鈕
+    setIsSubmitting(true);
+    setIsSuccess(false);
+
     try {
-      // 2. 加上標準的 Headers，確保 Web3Forms 伺服器順利接收
       const response = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
         headers: {
@@ -85,17 +86,19 @@ export default function Home() {
       
       const data = await response.json();
       
-      if (data.success) {
+      // 3. 判斷伺服器回應狀態
+      if (response.status === 200 || data.success) {
         setIsSuccess(true);
         e.currentTarget.reset(); // 清空表單
-        // 5秒後恢復按鈕狀態
         setTimeout(() => setIsSuccess(false), 5000);
       } else {
-        alert("發送失敗：" + (data.message || "請稍後再試。"));
+        // 如果還是 400，就會直接告訴你真實原因（通常是金鑰未驗證）
+        console.error("Web3Forms 拒絕原因:", data);
+        alert("發送失敗：" + (data.message || "請檢查信箱，確認您的 Web3Forms 金鑰已點擊啟用。"));
       }
     } catch (error) {
-      console.error(error);
-      alert("網路連線錯誤。如果您有使用擋廣告軟體 (Ad-blocker)，請先暫時關閉後再試一次。");
+      console.error("Fetch 錯誤:", error);
+      alert("網路連線錯誤，請檢查網路後再試一次。");
     } finally {
       setIsSubmitting(false);
     }
