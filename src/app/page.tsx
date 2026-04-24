@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, ChevronDown, ArrowRight, Menu, X, Mail } from 'lucide-react';
+import { Camera, ChevronDown, ArrowRight, Menu, X, Mail, CheckCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { collection, getDocs, query, orderBy, limit, doc, getDoc, where } from "firebase/firestore";
@@ -15,6 +15,10 @@ export default function Home() {
   const [profile, setProfile] = useState({ bio: "載入大師簡介中...", imageUrl: "" });
   const [isMenuOpen, setIsMenuOpen] = useState(false); 
   const [activeNotifIndex, setActiveNotifIndex] = useState(0); 
+
+  // 💡 表單狀態控制
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -56,6 +60,36 @@ export default function Home() {
       return () => clearInterval(timer);
     }
   }, [notifications.length]);
+
+  // 💡 非同步 (AJAX) 表單傳送邏輯
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setIsSuccess(false);
+
+    const formData = new FormData(e.currentTarget);
+
+    try {
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        body: formData
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setIsSuccess(true);
+        e.currentTarget.reset(); // 清空表單
+        // 5秒後恢復按鈕狀態
+        setTimeout(() => setIsSuccess(false), 5000);
+      } else {
+        alert("發送失敗，請稍後再試。");
+      }
+    } catch (error) {
+      alert("網路連線錯誤，請檢查網路後再試。");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <main className="relative min-h-screen bg-black text-white selection:bg-white selection:text-black overflow-hidden">
@@ -107,29 +141,17 @@ export default function Home() {
           以「攝影眼」洞見黑白光影的極致美學
         </motion.p>
 
-        {/* 💡 修復：確保手機版改為 flex-row 並且取消高度限制 */}
         <div className="min-h-[4rem] w-full flex items-center justify-center">
           <AnimatePresence mode="wait">
             {notifications.length > 0 && (
-              <motion.div 
-                key={activeNotifIndex} 
-                initial={{ opacity: 0, y: 10 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.5 }}
-                className="w-[90%] md:w-auto"
-              >
+              <motion.div key={activeNotifIndex} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.5 }} className="w-[90%] md:w-auto">
                 <Link href={notifications[activeNotifIndex].link} className="group flex flex-row items-center gap-3 md:gap-5 border border-zinc-800/60 bg-zinc-900/20 backdrop-blur-sm px-4 py-3 md:px-6 hover:bg-zinc-800/40 hover:border-zinc-500 transition-all duration-700 mx-auto justify-center w-full">
                   <div className="flex items-center gap-2 md:gap-3 text-zinc-400 shrink-0">
                     <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${notifications[activeNotifIndex].type === 'news' ? 'bg-white' : 'bg-amber-500'}`}></span>
-                    <span className={`text-[9px] md:text-[10px] tracking-[0.2em] uppercase ${notifications[activeNotifIndex].type === 'teaching' && 'text-amber-500'}`}>
-                      {notifications[activeNotifIndex].label}
-                    </span>
+                    <span className={`text-[9px] md:text-[10px] tracking-[0.2em] uppercase ${notifications[activeNotifIndex].type === 'teaching' && 'text-amber-500'}`}>{notifications[activeNotifIndex].label}</span>
                   </div>
                   <div className="w-[1px] h-4 bg-zinc-700"></div>
-                  <span className="font-serif text-[10px] md:text-sm tracking-widest text-zinc-300 group-hover:text-white transition-colors truncate">
-                    {notifications[activeNotifIndex].text}
-                  </span>
+                  <span className="font-serif text-[10px] md:text-sm tracking-widest text-zinc-300 group-hover:text-white transition-colors truncate">{notifications[activeNotifIndex].text}</span>
                   <ArrowRight size={14} className="text-zinc-600 group-hover:text-white transition-colors hidden md:block shrink-0" />
                 </Link>
               </motion.div>
@@ -142,18 +164,15 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* === 關於大師 === */}
+      {/* 關於大師 */}
       <section id="about" className="relative z-10 min-h-screen flex items-center px-6 md:px-24 py-20 bg-gradient-to-b from-transparent to-zinc-950/80">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-16">
           <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 1 }} className="w-full md:w-1/2 aspect-[3/4] relative bg-zinc-900 shadow-2xl overflow-hidden">
-            {/* 💡 首頁形象照防盜圖 (右鍵封鎖、拖曳封鎖、全不選取) */}
             {profile.imageUrl && <Image src={profile.imageUrl} alt="PETERPENN POON" fill draggable={false} onContextMenu={(e) => e.preventDefault()} className="object-cover grayscale hover:grayscale-0 transition-all duration-1000 select-none pointer-events-none" />}
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 1 }} className="w-full md:w-1/2 space-y-8 font-serif leading-loose">
             <h3 className="text-2xl md:text-3xl tracking-[0.1em]">Equipment is secondary,<br/>vision is primary.</h3>
-            <div className="text-gray-400 space-y-6 text-sm tracking-wide text-justify whitespace-pre-wrap">
-              {profile.bio}
-            </div>
+            <div className="text-gray-400 space-y-6 text-sm tracking-wide text-justify whitespace-pre-wrap">{profile.bio}</div>
             <div className="pt-4 flex gap-6">
               <Link href="/gallery" className="inline-flex items-center gap-4 border-b border-zinc-700 pb-2 hover:border-white hover:gap-6 transition-all duration-500 text-xs md:text-sm tracking-widest text-zinc-300">
                 進入線上展廳 <ArrowRight size={16} />
@@ -163,7 +182,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* === 指導與聯絡表單 === */}
+      {/* === 指導與聯絡表單 (升級 AJAX 版本) === */}
       <section id="contact" className="relative z-10 py-32 px-6 bg-black flex flex-col items-center border-t border-zinc-900">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="max-w-2xl w-full text-center">
           <Mail size={32} className="mx-auto mb-6 opacity-30" strokeWidth={1} />
@@ -172,16 +191,38 @@ export default function Home() {
             無論是探討黑白光影的心法，或是希望獲得潘老師 1-on-1 的個人攝影眼指導、作品點評與商業合作，歡迎透過下方表單或直接寄信聯繫。
           </p>
           
-          <form action="https://api.web3forms.com/submit" method="POST" className="space-y-6 text-left">
+          {/* 💡 攔截預設跳轉，改用 onSubmit 執行非同步傳送 */}
+          <form onSubmit={handleFormSubmit} className="space-y-6 text-left relative">
             <input type="hidden" name="access_key" value="9826665b-ab6c-4e5c-89b8-1d5b13dfe4fa" />
             <input type="hidden" name="subject" value="來自 PETERPENN POON 官網的新訊息" />
-            <input type="hidden" name="redirect" value="https://peterpenn.com" />
+            
+            {/* 已經不需要 redirect 標籤了，因為我們不跳轉頁面了 */}
+            {/* <input type="hidden" name="redirect" value="https://peterpenn.com" /> */}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div><label className="block text-[10px] tracking-[0.2em] text-zinc-500 mb-2 uppercase">您的稱呼 (Name)</label><input type="text" name="name" required className="w-full bg-zinc-900/50 border border-zinc-800 p-4 text-sm outline-none focus:border-zinc-500 transition-colors" /></div>
-              <div><label className="block text-[10px] tracking-[0.2em] text-zinc-500 mb-2 uppercase">電子信箱 (Email)</label><input type="email" name="email" required className="w-full bg-zinc-900/50 border border-zinc-800 p-4 text-sm outline-none focus:border-zinc-500 transition-colors" /></div>
+              <div><label className="block text-[10px] tracking-[0.2em] text-zinc-500 mb-2 uppercase">您的稱呼 (Name)</label><input type="text" name="name" required disabled={isSubmitting} className="w-full bg-zinc-900/50 border border-zinc-800 p-4 text-sm outline-none focus:border-zinc-500 transition-colors disabled:opacity-50" /></div>
+              <div><label className="block text-[10px] tracking-[0.2em] text-zinc-500 mb-2 uppercase">電子信箱 (Email)</label><input type="email" name="email" required disabled={isSubmitting} className="w-full bg-zinc-900/50 border border-zinc-800 p-4 text-sm outline-none focus:border-zinc-500 transition-colors disabled:opacity-50" /></div>
             </div>
-            <div><label className="block text-[10px] tracking-[0.2em] text-zinc-500 mb-2 uppercase">詢問內容 (Message)</label><textarea name="message" rows={5} required className="w-full bg-zinc-900/50 border border-zinc-800 p-4 text-sm outline-none focus:border-zinc-500 transition-colors" placeholder="請簡述您的攝影經歷或希望獲得指導的方向..."></textarea></div>
-            <button type="submit" className="w-full bg-white text-black py-4 font-serif tracking-widest text-sm hover:bg-zinc-300 transition-colors uppercase">傳送訊息 Send Message</button>
+            <div><label className="block text-[10px] tracking-[0.2em] text-zinc-500 mb-2 uppercase">詢問內容 (Message)</label><textarea name="message" rows={5} required disabled={isSubmitting} className="w-full bg-zinc-900/50 border border-zinc-800 p-4 text-sm outline-none focus:border-zinc-500 transition-colors disabled:opacity-50" placeholder="請簡述您的攝影經歷或希望獲得指導的方向..."></textarea></div>
+            
+            {/* 💡 動態按鈕狀態 */}
+            <button 
+              type="submit" 
+              disabled={isSubmitting || isSuccess}
+              className={`w-full py-4 font-serif tracking-widest text-sm transition-all duration-500 flex items-center justify-center gap-3 uppercase ${
+                isSuccess ? 'bg-green-900/40 text-green-400 border border-green-800/50' : 
+                isSubmitting ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 
+                'bg-white text-black hover:bg-zinc-300'
+              }`}
+            >
+              {isSubmitting ? (
+                <><Loader2 size={18} className="animate-spin" /> 傳送中 Sending...</>
+              ) : isSuccess ? (
+                <><CheckCircle size={18} /> 訊息已成功送出 Message Sent</>
+              ) : (
+                "傳送訊息 Send Message"
+              )}
+            </button>
           </form>
         </motion.div>
       </section>
