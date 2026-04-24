@@ -61,19 +61,28 @@ export default function Home() {
     }
   }, [notifications.length]);
 
-  // 💡 非同步 (AJAX) 表單傳送邏輯
+  // 💡 升級版非同步 (AJAX) 表單傳送邏輯：使用 JSON 格式
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setIsSuccess(false);
 
+    // 1. 將表單資料轉換為 JSON 物件
     const formData = new FormData(e.currentTarget);
+    const object = Object.fromEntries(formData.entries());
+    const json = JSON.stringify(object);
 
     try {
+      // 2. 加上標準的 Headers，確保 Web3Forms 伺服器順利接收
       const response = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
-        body: formData
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: json
       });
+      
       const data = await response.json();
       
       if (data.success) {
@@ -82,10 +91,11 @@ export default function Home() {
         // 5秒後恢復按鈕狀態
         setTimeout(() => setIsSuccess(false), 5000);
       } else {
-        alert("發送失敗，請稍後再試。");
+        alert("發送失敗：" + (data.message || "請稍後再試。"));
       }
     } catch (error) {
-      alert("網路連線錯誤，請檢查網路後再試。");
+      console.error(error);
+      alert("網路連線錯誤。如果您有使用擋廣告軟體 (Ad-blocker)，請先暫時關閉後再試一次。");
     } finally {
       setIsSubmitting(false);
     }
