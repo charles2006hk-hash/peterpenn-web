@@ -28,8 +28,8 @@ export const metadata: Metadata = {
       {
         // 💡 建議挑選一張作品命名為 logo.png 放入 public 資料夾
         url: '/logo.png', 
-        width: 1200,
-        height: 1200,
+        width: 1024,
+        height: 1024,
         alt: 'PETERPENN POON 攝影作品',
       },
     ],
