@@ -61,16 +61,17 @@ export default function Home() {
     }
   }, [notifications.length]);
 
-  // 💡 終極版：解決 400 Bad Request 與資料遺失問題
+  // 💡 最終完美版：解決 React 非同步事件遺失問題
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // 1. 【關鍵修正】必須在鎖定表單前，先把資料抓出來！
-    const formData = new FormData(e.currentTarget);
+    // 1. 【關鍵修復】在等待伺服器前，先把表單物件死死抓著存起來！
+    const form = e.currentTarget;
+
+    const formData = new FormData(form);
     const object = Object.fromEntries(formData.entries());
     const json = JSON.stringify(object);
 
-    // 2. 現在才開始鎖定表單按鈕
     setIsSubmitting(true);
     setIsSuccess(false);
 
@@ -86,13 +87,12 @@ export default function Home() {
       
       const data = await response.json();
       
-      // 3. 判斷伺服器回應狀態
       if (response.status === 200 || data.success) {
         setIsSuccess(true);
-        e.currentTarget.reset(); // 清空表單
+        // 2. 使用剛剛存下來的 form 變數來清空表單，這樣就絕對不會報錯 null 了！
+        form.reset(); 
         setTimeout(() => setIsSuccess(false), 5000);
       } else {
-        // 如果還是 400，就會直接告訴你真實原因（通常是金鑰未驗證）
         console.error("Web3Forms 拒絕原因:", data);
         alert("發送失敗：" + (data.message || "請檢查信箱，確認您的 Web3Forms 金鑰已點擊啟用。"));
       }
@@ -103,7 +103,7 @@ export default function Home() {
       setIsSubmitting(false);
     }
   };
-
+  
   return (
     <main className="relative min-h-screen bg-black text-white selection:bg-white selection:text-black overflow-hidden">
       <div className="film-grain" />
