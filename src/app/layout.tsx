@@ -26,10 +26,10 @@ export const metadata: Metadata = {
     siteName: 'PETERPENN POON Gallery',
     images: [
       {
-        // 💡 建議挑選一張作品命名為 og-image.jpg 放入 public 資料夾
-        url: '/og-image.jpg', 
+        // 💡 建議挑選一張作品命名為 logo.png 放入 public 資料夾
+        url: '/logo.png', 
         width: 1200,
-        height: 630,
+        height: 1200,
         alt: 'PETERPENN POON 攝影作品',
       },
     ],
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'PETERPENN POON | 潘少君',
     description: '以「攝影眼」洞見黑白光影的極致美學。',
-    images: ['/og-image.jpg'],
+    images: ['/logo.png'],
   },
 }
 
