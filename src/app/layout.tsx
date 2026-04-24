@@ -11,6 +11,14 @@ export const metadata: Metadata = {
   description: '40年商業攝影底蘊 × 10載藝術紀實探索。以「攝影眼」洞見黑白光影的極致美學。',
   keywords: ['潘少君', 'Peterpenn Poon', '攝影', '黑白攝影', '攝影眼', '藝術紀實', '商業攝影', 'Photography'],
   metadataBase: new URL('https://peterpenn.com'),
+  
+  // 💡 設定網站圖示 (Favicon & iPhone Logo)
+  icons: {
+    icon: '/favicon.png',          // 瀏覽器分頁圖示
+    shortcut: '/favicon.png',      // 捷徑圖示
+    apple: '/logo.png',            // iPhone / iOS 桌面圖示 (Apple Touch Icon)
+  },
+
   openGraph: {
     title: 'PETERPENN POON | 潘少君',
     description: '40年商業攝影底蘊 × 10載藝術紀實探索。以「攝影眼」洞見黑白光影的極致美學。',
@@ -18,7 +26,7 @@ export const metadata: Metadata = {
     siteName: 'PETERPENN POON Gallery',
     images: [
       {
-        // 💡 稍後你可以挑選一張最具代表性的照片，命名為 og-image.jpg，放進專案的 public 資料夾裡
+        // 💡 建議挑選一張作品命名為 og-image.jpg 放入 public 資料夾
         url: '/og-image.jpg', 
         width: 1200,
         height: 630,
