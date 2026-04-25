@@ -259,7 +259,7 @@ export default function GalleryPage() {
                           animate={{ opacity: 0.85 }} 
                           transition={{ delay: 0.5 }}
                           // 移除了 grayscale，保留原本紅印章顏色，加上 drop-shadow 讓它在黑白圖上更明顯
-                          className="absolute bottom-2 right-2 md:bottom-4 md:right-4 w-10 md:w-16 pointer-events-none select-none drop-shadow-md"
+                          className="absolute bottom-2 right-2 md:bottom-4 md:right-4 w-6 md:w-10 pointer-events-none select-none drop-shadow-md"
                         >
                           <img src="/logo.png" alt="Stamp" className="w-full h-auto" />
                         </motion.div>
@@ -306,7 +306,7 @@ export default function GalleryPage() {
               />
               
               {/* 燈箱紅色印章 */}
-              <div className="absolute bottom-6 right-6 w-14 md:w-20 opacity-90 pointer-events-none select-none drop-shadow-lg">
+              <div className="absolute bottom-6 right-6 w-10 md:w-14 opacity-90 pointer-events-none select-none drop-shadow-lg">
                 <img src="/logo.png" alt="Stamp" className="w-full h-auto" />
               </div>
 
