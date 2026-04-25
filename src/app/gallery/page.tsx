@@ -21,6 +21,10 @@ export default function GalleryPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // 💡 新增：縮圖列的 Ref
+  const thumbScrollRef = useRef<HTMLDivElement>(null);
+  const activeThumbRef = useRef<HTMLButtonElement>(null);
+
   // 1. 初始化：抓取系列
   useEffect(() => {
     const fetchAlbums = async () => {
@@ -53,7 +57,7 @@ export default function GalleryPage() {
     } finally { setLoadingPhotos(false); }
   };
 
-  // 💡 3. 追蹤中央照片的交叉觀察器
+  // 3. 追蹤中央照片的交叉觀察器
   useEffect(() => {
     if (!scrollContainerRef.current) return;
     const observer = new IntersectionObserver((entries) => {
@@ -66,12 +70,22 @@ export default function GalleryPage() {
     return () => observer.disconnect();
   }, [selectedAlbum, photos, albums]);
 
-  // 💡 4. 解決 Windows 滾輪問題：將垂直滾輪轉換為水平滑動
+  // 💡 新增：當 activeIndex 改變時，上方縮圖自動置中跟隨
+  useEffect(() => {
+    if (activeThumbRef.current && thumbScrollRef.current) {
+      activeThumbRef.current.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest"
+      });
+    }
+  }, [activeIndex, selectedAlbum]);
+
+  // 4. 解決 Windows 滾輪問題：將垂直滾輪轉換為水平滑動
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
     const handleWheel = (e: WheelEvent) => {
-      // 只有當使用者上下滾動時才介入轉換 (避免干擾觸控板的左右滑動)
       if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
         e.preventDefault();
         container.scrollBy({ left: e.deltaY > 0 ? 500 : -500, behavior: "smooth" });
@@ -81,11 +95,20 @@ export default function GalleryPage() {
     return () => container.removeEventListener("wheel", handleWheel);
   }, [selectedAlbum, photos, albums]);
 
-  // 💡 5. 箭頭點擊導航
+  // 5. 箭頭點擊導航
   const handleArrowScroll = (direction: 'left' | 'right') => {
     if (!scrollContainerRef.current) return;
     const scrollAmount = window.innerWidth * 0.6;
     scrollContainerRef.current.scrollBy({ left: direction === 'right' ? scrollAmount : -scrollAmount, behavior: "smooth" });
+  };
+
+  // 💡 新增：點擊縮圖時，大圖自動滾動到對應位置
+  const scrollToPhoto = (index: number) => {
+    if (!scrollContainerRef.current) return;
+    const elements = scrollContainerRef.current.querySelectorAll(".photo-item");
+    if (elements[index]) {
+      elements[index].scrollIntoView({ behavior: 'smooth', inline: 'center' });
+    }
   };
 
   useEffect(() => {
@@ -101,7 +124,7 @@ export default function GalleryPage() {
     >
       <div className="film-grain pointer-events-none" />
 
-      {/* 頂部導航 */}
+      {/* === 頂部導航 === */}
       <header className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center w-full px-6 md:px-8 py-6 mix-blend-difference pointer-events-none">
         <div className="flex items-center gap-6 pointer-events-auto">
           <Link href="/" className="flex items-center gap-2 hover:text-gray-400 transition-colors font-serif tracking-widest text-xs md:text-sm uppercase">
@@ -113,42 +136,56 @@ export default function GalleryPage() {
             </button>
           )}
         </div>
-        
-        {/* 右上角快速導航縮圖 */}
-        {!loadingAlbums && albums.length > 0 && (
-          <div className="flex items-center gap-3 overflow-x-auto max-w-[50%] md:max-w-full pb-2 no-scrollbar pointer-events-auto">
-            {albums.map((album) => (
-              <button key={album.id} onClick={() => handleSelectAlbum(album)} className="relative group shrink-0">
-                <div className={`relative w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden transition-all duration-500 border-2 ${
-                  selectedAlbum?.id === album.id ? 'border-white scale-110 grayscale-0' : 'border-zinc-800 grayscale hover:grayscale-0 hover:border-zinc-500'
-                }`}>
-                  {album.coverImage ? <Image draggable={false} src={album.coverImage} alt="Album" fill className="object-cover pointer-events-none" /> : <div className="w-full h-full bg-zinc-900 flex items-center justify-center"><FolderOpen size={12}/></div>}
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
       </header>
 
-      {/* === 左右導航按鈕 (僅電腦版懸停顯示) === */}
+      {/* 💡 新增：進入系列後的「動態縮圖跟隨列」 */}
+      <AnimatePresence>
+        {selectedAlbum && photos.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            ref={thumbScrollRef}
+            className="absolute top-20 left-1/2 -translate-x-1/2 w-auto max-w-[85vw] md:max-w-[60vw] overflow-x-auto no-scrollbar z-40 flex items-center gap-3 px-10 py-2 mask-edges pointer-events-auto"
+          >
+            {photos.map((photo, index) => {
+              const isActive = index === activeIndex;
+              return (
+                <button
+                  key={photo.id}
+                  ref={isActive ? activeThumbRef : null}
+                  onClick={() => scrollToPhoto(index)}
+                  className={`relative h-10 w-10 md:h-12 md:w-12 flex-shrink-0 cursor-pointer transition-all duration-500 rounded-sm overflow-hidden ${
+                    isActive ? 'scale-110 opacity-100 border border-white/50' : 'scale-90 opacity-30 hover:opacity-80 border border-transparent grayscale hover:grayscale-0'
+                  }`}
+                >
+                  <Image src={photo.imageUrl} alt="thumbnail" fill className="object-cover pointer-events-none" />
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* === 左右導航按鈕 === */}
       {!loadingAlbums && (!selectedAlbum ? albums.length > 1 : photos.length > 1) && (
         <>
-          <button onClick={() => handleArrowScroll('left')} className="absolute left-0 top-0 bottom-0 w-24 z-40 hidden md:flex items-center justify-start pl-4 opacity-0 hover:opacity-100 hover:bg-gradient-to-r from-black/50 to-transparent transition-all duration-500 text-white/50 hover:text-white">
+          <button onClick={() => handleArrowScroll('left')} className="absolute left-0 top-0 bottom-0 w-24 z-40 hidden md:flex items-center justify-start pl-4 opacity-0 hover:opacity-100 hover:bg-gradient-to-r from-black/50 to-transparent transition-all duration-500 text-white/50 hover:text-white pointer-events-auto">
             <ChevronLeft size={48} strokeWidth={1} />
           </button>
-          <button onClick={() => handleArrowScroll('right')} className="absolute right-0 top-0 bottom-0 w-24 z-40 hidden md:flex items-center justify-end pr-4 opacity-0 hover:opacity-100 hover:bg-gradient-to-l from-black/50 to-transparent transition-all duration-500 text-white/50 hover:text-white">
+          <button onClick={() => handleArrowScroll('right')} className="absolute right-0 top-0 bottom-0 w-24 z-40 hidden md:flex items-center justify-end pr-4 opacity-0 hover:opacity-100 hover:bg-gradient-to-l from-black/50 to-transparent transition-all duration-500 text-white/50 hover:text-white pointer-events-auto">
             <ChevronRight size={48} strokeWidth={1} />
           </button>
         </>
       )}
 
-      {/* === 視圖 A：Gallery 首頁 === */}
+      {/* === 視圖 A：Gallery 首頁 (維持原樣) === */}
       {!selectedAlbum && (
         <section className="relative z-10 h-screen w-full flex items-center">
           {loadingAlbums ? (
             <div className="w-full flex items-center justify-center"><Loader2 className="animate-spin text-zinc-500" size={32} /></div>
           ) : (
-            // 💡 加入 overscroll-x-none 防止 Mac 滑動回上一頁
             <div ref={scrollContainerRef} className="flex items-center h-full w-full overflow-x-auto snap-x snap-mandatory px-[15vw] gap-[20vw] no-scrollbar overscroll-x-none" style={{ scrollbarWidth: 'none' }}>
               {albums.map((album, index) => (
                 <div key={album.id} data-index={index} className="photo-item relative flex flex-col items-center justify-center shrink-0 w-[80vw] md:w-[400px] snap-center">
@@ -194,15 +231,29 @@ export default function GalleryPage() {
           ) : photos.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-zinc-500 font-serif">
                <p className="tracking-widest mb-4">此系列尚無照片。</p>
-               <button onClick={() => setSelectedAlbum(null)} className="text-xs uppercase border border-zinc-800 px-4 py-2 hover:bg-white hover:text-black transition-all">返回列表</button>
+               <button onClick={() => setSelectedAlbum(null)} className="text-xs uppercase border border-zinc-800 px-4 py-2 hover:bg-white hover:text-black transition-all pointer-events-auto">返回列表</button>
             </div>
           ) : (
-            // 💡 加入 overscroll-x-none
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center h-full w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory px-[15vw] gap-[8vw] md:gap-[10vw] no-scrollbar overscroll-x-none" style={{ scrollbarWidth: 'none' }} ref={scrollContainerRef}>
               {photos.map((photo, index) => (
                 <div key={photo.id} data-index={index} className="photo-item relative flex flex-col items-center justify-center shrink-0 w-[85vw] md:w-[70vw] max-w-[1000px] h-[60vh] md:h-[75vh] snap-center cursor-zoom-in" onClick={() => setSelectedLightboxPhoto(photo)}>
                   <div className={`relative h-full w-full transition-all duration-700 ease-out flex justify-center items-center ${activeIndex === index ? 'grayscale-0 opacity-100 scale-100 shadow-[0_40px_100px_rgba(0,0,0,0.9)]' : 'grayscale opacity-20 scale-90'}`}>
-                    <Image draggable={false} src={photo.imageUrl} alt="P" fill className="object-contain pointer-events-none" priority={index < 3} />
+                    
+                    {/* 相片本體 */}
+                    <Image draggable={false} src={photo.imageUrl} alt="Photo" fill className="object-contain pointer-events-none" priority={index < 3} />
+                    
+                    {/* 💡 畫廊印章：自動添加到當前相片右下角 */}
+                    {activeIndex === index && (
+                      <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 0.35 }} 
+                        transition={{ delay: 0.5 }}
+                        className="absolute bottom-4 right-4 md:bottom-8 md:right-8 w-12 md:w-16 mix-blend-screen pointer-events-none select-none"
+                      >
+                        <Image src="/logo.png" alt="Stamp" width={100} height={100} className="w-full h-auto grayscale brightness-150" />
+                      </motion.div>
+                    )}
+
                   </div>
                 </div>
               ))}
@@ -213,18 +264,6 @@ export default function GalleryPage() {
           {/* 相片進度指示器與標題 */}
           {selectedAlbum && photos.length > 0 && (
             <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 w-full flex flex-col items-center z-40 pointer-events-none">
-              
-              {/* 極簡進度條 */}
-              <div className="flex flex-col items-center mb-4">
-                <div className="text-[10px] font-serif tracking-[0.4em] text-white mb-3 flex items-center">
-                  {String(activeIndex + 1).padStart(2, '0')} <span className="text-zinc-700 mx-3">/</span> {String(photos.length).padStart(2, '0')}
-                </div>
-                <div className="w-32 md:w-48 h-[1px] bg-zinc-800 relative overflow-hidden">
-                  <motion.div className="absolute top-0 left-0 h-full bg-white" animate={{ width: `${((activeIndex + 1) / photos.length) * 100}%` }} transition={{ duration: 0.5, ease: "easeInOut" }} />
-                </div>
-              </div>
-
-              {/* 系列描述 (毛玻璃效果) */}
               <div className="bg-black/30 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none px-6 py-2 rounded-xl text-center">
                 <h2 className="text-sm md:text-lg tracking-[0.2em] text-white mb-1 uppercase font-serif drop-shadow-lg">{selectedAlbum.title}</h2>
                 {selectedAlbum.description && (
@@ -238,13 +277,21 @@ export default function GalleryPage() {
         </section>
       )}
 
-      {/* 💡 燈箱防盜 */}
+      {/* 💡 燈箱防盜 (放大觀看時) */}
       <AnimatePresence>
         {selectedLightboxPhoto && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/98 backdrop-blur-xl cursor-zoom-out" onClick={() => setSelectedLightboxPhoto(null)}>
             <button className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors z-[110]"><X size={32} strokeWidth={1} /></button>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="relative w-full max-w-6xl h-[80vh] px-4">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="relative w-full max-w-6xl h-[85vh] px-4">
+              
+              {/* 放大圖 */}
               <Image draggable={false} src={selectedLightboxPhoto.imageUrl} alt="Selected" fill className="object-contain pointer-events-none" />
+              
+              {/* 💡 燈箱印章：放大時一樣防盜 */}
+              <div className="absolute bottom-[5%] right-[5%] w-16 md:w-20 opacity-30 mix-blend-screen pointer-events-none select-none">
+                <Image src="/logo.png" alt="Stamp" width={100} height={100} className="w-full h-auto grayscale brightness-150" />
+              </div>
+
             </motion.div>
           </motion.div>
         )}
