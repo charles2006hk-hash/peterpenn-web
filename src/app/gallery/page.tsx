@@ -20,12 +20,9 @@ export default function GalleryPage() {
   
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  // 💡 新增：縮圖列的 Ref
   const thumbScrollRef = useRef<HTMLDivElement>(null);
   const activeThumbRef = useRef<HTMLButtonElement>(null);
 
-  // 1. 初始化：抓取系列
   useEffect(() => {
     const fetchAlbums = async () => {
       try {
@@ -37,7 +34,6 @@ export default function GalleryPage() {
     fetchAlbums();
   }, []);
 
-  // 2. 點擊系列：抓取相片
   const handleSelectAlbum = async (album: any) => {
     setSelectedAlbum(album); setLoadingPhotos(true); setActiveIndex(0); setPhotos([]); 
     try {
@@ -57,7 +53,6 @@ export default function GalleryPage() {
     } finally { setLoadingPhotos(false); }
   };
 
-  // 3. 追蹤中央照片的交叉觀察器
   useEffect(() => {
     if (!scrollContainerRef.current) return;
     const observer = new IntersectionObserver((entries) => {
@@ -70,18 +65,12 @@ export default function GalleryPage() {
     return () => observer.disconnect();
   }, [selectedAlbum, photos, albums]);
 
-  // 💡 新增：當 activeIndex 改變時，上方縮圖自動置中跟隨
   useEffect(() => {
     if (activeThumbRef.current && thumbScrollRef.current) {
-      activeThumbRef.current.scrollIntoView({
-        behavior: "smooth",
-        inline: "center",
-        block: "nearest"
-      });
+      activeThumbRef.current.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     }
   }, [activeIndex, selectedAlbum]);
 
-  // 4. 解決 Windows 滾輪問題：將垂直滾輪轉換為水平滑動
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -95,20 +84,16 @@ export default function GalleryPage() {
     return () => container.removeEventListener("wheel", handleWheel);
   }, [selectedAlbum, photos, albums]);
 
-  // 5. 箭頭點擊導航
   const handleArrowScroll = (direction: 'left' | 'right') => {
     if (!scrollContainerRef.current) return;
     const scrollAmount = window.innerWidth * 0.6;
     scrollContainerRef.current.scrollBy({ left: direction === 'right' ? scrollAmount : -scrollAmount, behavior: "smooth" });
   };
 
-  // 💡 新增：點擊縮圖時，大圖自動滾動到對應位置
   const scrollToPhoto = (index: number) => {
     if (!scrollContainerRef.current) return;
     const elements = scrollContainerRef.current.querySelectorAll(".photo-item");
-    if (elements[index]) {
-      elements[index].scrollIntoView({ behavior: 'smooth', inline: 'center' });
-    }
+    if (elements[index]) elements[index].scrollIntoView({ behavior: 'smooth', inline: 'center' });
   };
 
   useEffect(() => {
@@ -124,7 +109,7 @@ export default function GalleryPage() {
     >
       <div className="film-grain pointer-events-none" />
 
-      {/* === 頂部導航 === */}
+      {/* === 1. 頂部導航與「系列縮圖」回歸 === */}
       <header className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center w-full px-6 md:px-8 py-6 mix-blend-difference pointer-events-none">
         <div className="flex items-center gap-6 pointer-events-auto">
           <Link href="/" className="flex items-center gap-2 hover:text-gray-400 transition-colors font-serif tracking-widest text-xs md:text-sm uppercase">
@@ -136,9 +121,24 @@ export default function GalleryPage() {
             </button>
           )}
         </div>
+        
+        {/* 💡 修復 1：右上角快速導航縮圖 (系列 Album 縮圖) 加回來了 */}
+        {!loadingAlbums && albums.length > 0 && (
+          <div className="flex items-center gap-3 overflow-x-auto max-w-[50%] md:max-w-full pb-2 no-scrollbar pointer-events-auto">
+            {albums.map((album) => (
+              <button key={album.id} onClick={() => handleSelectAlbum(album)} className="relative group shrink-0">
+                <div className={`relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden transition-all duration-500 border-2 ${
+                  selectedAlbum?.id === album.id ? 'border-white scale-110 grayscale-0' : 'border-zinc-800 grayscale hover:grayscale-0 hover:border-zinc-500'
+                }`}>
+                  {album.coverImage ? <Image draggable={false} src={album.coverImage} alt="Album" fill className="object-cover pointer-events-none" /> : <div className="w-full h-full bg-zinc-900 flex items-center justify-center"><FolderOpen size={12}/></div>}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
-      {/* 💡 新增：進入系列後的「動態縮圖跟隨列」 */}
+      {/* === 動態縮圖跟隨列 (Photo 縮圖) === */}
       <AnimatePresence>
         {selectedAlbum && photos.length > 0 && (
           <motion.div
@@ -147,7 +147,8 @@ export default function GalleryPage() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             ref={thumbScrollRef}
-            className="absolute top-20 left-1/2 -translate-x-1/2 w-auto max-w-[85vw] md:max-w-[60vw] overflow-x-auto no-scrollbar z-40 flex items-center gap-3 px-10 py-2 mask-edges pointer-events-auto"
+            // 💡 修復 2：稍微往下放一點點，避免跟頂部 Header 太擠
+            className="absolute top-20 md:top-24 left-1/2 -translate-x-1/2 w-auto max-w-[85vw] md:max-w-[60vw] overflow-x-auto no-scrollbar z-40 flex items-center gap-3 px-10 py-2 mask-edges pointer-events-auto"
           >
             {photos.map((photo, index) => {
               const isActive = index === activeIndex;
@@ -168,7 +169,7 @@ export default function GalleryPage() {
         )}
       </AnimatePresence>
 
-      {/* === 左右導航按鈕 === */}
+      {/* 左右導航按鈕 */}
       {!loadingAlbums && (!selectedAlbum ? albums.length > 1 : photos.length > 1) && (
         <>
           <button onClick={() => handleArrowScroll('left')} className="absolute left-0 top-0 bottom-0 w-24 z-40 hidden md:flex items-center justify-start pl-4 opacity-0 hover:opacity-100 hover:bg-gradient-to-r from-black/50 to-transparent transition-all duration-500 text-white/50 hover:text-white pointer-events-auto">
@@ -180,7 +181,7 @@ export default function GalleryPage() {
         </>
       )}
 
-      {/* === 視圖 A：Gallery 首頁 (維持原樣) === */}
+      {/* === 視圖 A：Gallery 首頁 === */}
       {!selectedAlbum && (
         <section className="relative z-10 h-screen w-full flex items-center">
           {loadingAlbums ? (
@@ -225,7 +226,7 @@ export default function GalleryPage() {
 
       {/* === 視圖 B：系列內部相片 === */}
       {selectedAlbum && (
-        <section className="relative z-10 h-screen w-full">
+        <section className="relative z-10 h-screen w-full flex flex-col justify-center">
           {loadingPhotos ? (
             <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin text-zinc-500" size={32} /></div>
           ) : photos.length === 0 ? (
@@ -234,25 +235,36 @@ export default function GalleryPage() {
                <button onClick={() => setSelectedAlbum(null)} className="text-xs uppercase border border-zinc-800 px-4 py-2 hover:bg-white hover:text-black transition-all pointer-events-auto">返回列表</button>
             </div>
           ) : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center h-full w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory px-[15vw] gap-[8vw] md:gap-[10vw] no-scrollbar overscroll-x-none" style={{ scrollbarWidth: 'none' }} ref={scrollContainerRef}>
+            // 💡 修復 2：加上 pt-24 pb-20 增加上下內距，把照片往下推，避免被縮圖遮住
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center h-full w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory px-[15vw] gap-[8vw] md:gap-[10vw] no-scrollbar overscroll-x-none pt-28 pb-20" style={{ scrollbarWidth: 'none' }} ref={scrollContainerRef}>
               {photos.map((photo, index) => (
-                <div key={photo.id} data-index={index} className="photo-item relative flex flex-col items-center justify-center shrink-0 w-[85vw] md:w-[70vw] max-w-[1000px] h-[60vh] md:h-[75vh] snap-center cursor-zoom-in" onClick={() => setSelectedLightboxPhoto(photo)}>
-                  <div className={`relative h-full w-full transition-all duration-700 ease-out flex justify-center items-center ${activeIndex === index ? 'grayscale-0 opacity-100 scale-100 shadow-[0_40px_100px_rgba(0,0,0,0.9)]' : 'grayscale opacity-20 scale-90'}`}>
+                <div key={photo.id} data-index={index} className="photo-item relative flex flex-col items-center justify-center shrink-0 w-[85vw] md:w-[70vw] max-w-[1000px] h-full snap-center cursor-zoom-in" onClick={() => setSelectedLightboxPhoto(photo)}>
+                  
+                  <div className={`relative transition-all duration-700 ease-out flex justify-center items-center ${activeIndex === index ? 'opacity-100 scale-100' : 'opacity-30 scale-90 grayscale'}`}>
                     
-                    {/* 相片本體 */}
-                    <Image draggable={false} src={photo.imageUrl} alt="Photo" fill className="object-contain pointer-events-none" priority={index < 3} />
-                    
-                    {/* 💡 畫廊印章：自動添加到當前相片右下角 */}
-                    {activeIndex === index && (
-                      <motion.div 
-                        initial={{ opacity: 0 }} 
-                        animate={{ opacity: 0.35 }} 
-                        transition={{ delay: 0.5 }}
-                        className="absolute bottom-4 right-4 md:bottom-8 md:right-8 w-12 md:w-16 mix-blend-screen pointer-events-none select-none"
-                      >
-                        <Image src="/logo.png" alt="Stamp" width={100} height={100} className="w-full h-auto grayscale brightness-150" />
-                      </motion.div>
-                    )}
+                    {/* 💡 修復 3：改用 inline-flex 讓容器「緊貼」圖片邊緣 */}
+                    <div className="relative inline-flex max-w-full max-h-full shadow-[0_40px_100px_rgba(0,0,0,0.8)]">
+                      {/* 放棄 Image fill，改用原生的 img，確保容器與圖片一樣大 */}
+                      <img 
+                        draggable={false} 
+                        src={photo.imageUrl} 
+                        alt="Photo" 
+                        className="max-h-[60vh] md:max-h-[70vh] w-auto object-contain pointer-events-none" 
+                      />
+                      
+                      {/* 💡 畫廊印章：現在會完美緊貼在「相片本身」的右下角，且顏色是鮮豔的紅！ */}
+                      {activeIndex === index && (
+                        <motion.div 
+                          initial={{ opacity: 0 }} 
+                          animate={{ opacity: 0.85 }} 
+                          transition={{ delay: 0.5 }}
+                          // 移除了 grayscale，保留原本紅印章顏色，加上 drop-shadow 讓它在黑白圖上更明顯
+                          className="absolute bottom-2 right-2 md:bottom-4 md:right-4 w-10 md:w-16 pointer-events-none select-none drop-shadow-md"
+                        >
+                          <img src="/logo.png" alt="Stamp" className="w-full h-auto" />
+                        </motion.div>
+                      )}
+                    </div>
 
                   </div>
                 </div>
@@ -263,7 +275,7 @@ export default function GalleryPage() {
 
           {/* 相片進度指示器與標題 */}
           {selectedAlbum && photos.length > 0 && (
-            <div className="absolute bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 w-full flex flex-col items-center z-40 pointer-events-none">
+            <div className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 w-full flex flex-col items-center z-40 pointer-events-none">
               <div className="bg-black/30 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none px-6 py-2 rounded-xl text-center">
                 <h2 className="text-sm md:text-lg tracking-[0.2em] text-white mb-1 uppercase font-serif drop-shadow-lg">{selectedAlbum.title}</h2>
                 {selectedAlbum.description && (
@@ -277,19 +289,25 @@ export default function GalleryPage() {
         </section>
       )}
 
-      {/* 💡 燈箱防盜 (放大觀看時) */}
+      {/* === 💡 燈箱防盜 (放大觀看時同步修復) === */}
       <AnimatePresence>
         {selectedLightboxPhoto && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/98 backdrop-blur-xl cursor-zoom-out" onClick={() => setSelectedLightboxPhoto(null)}>
             <button className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors z-[110]"><X size={32} strokeWidth={1} /></button>
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="relative w-full max-w-6xl h-[85vh] px-4">
+            
+            {/* 一樣使用緊貼容器 */}
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="relative inline-flex max-w-[95vw] max-h-[85vh] px-4">
               
-              {/* 放大圖 */}
-              <Image draggable={false} src={selectedLightboxPhoto.imageUrl} alt="Selected" fill className="object-contain pointer-events-none" />
+              <img 
+                draggable={false} 
+                src={selectedLightboxPhoto.imageUrl} 
+                alt="Selected" 
+                className="max-w-full max-h-[85vh] w-auto object-contain pointer-events-none shadow-2xl" 
+              />
               
-              {/* 💡 燈箱印章：放大時一樣防盜 */}
-              <div className="absolute bottom-[5%] right-[5%] w-16 md:w-20 opacity-30 mix-blend-screen pointer-events-none select-none">
-                <Image src="/logo.png" alt="Stamp" width={100} height={100} className="w-full h-auto grayscale brightness-150" />
+              {/* 燈箱紅色印章 */}
+              <div className="absolute bottom-6 right-6 w-14 md:w-20 opacity-90 pointer-events-none select-none drop-shadow-lg">
+                <img src="/logo.png" alt="Stamp" className="w-full h-auto" />
               </div>
 
             </motion.div>
