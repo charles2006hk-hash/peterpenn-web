@@ -49,6 +49,22 @@
   }
 }
 
+/* 💡 新增：隱藏滾動條與邊緣羽化遮罩 (Gallery 專用) */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;    /* Firefox */
+  }
+  .mask-edges {
+    /* 增加 -webkit- 前綴確保在 Mac Safari 與 iOS 上也能完美呈現漸層透明 */
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  }
+}
+
 body {
   background-color: #000;
   color: #fff;
