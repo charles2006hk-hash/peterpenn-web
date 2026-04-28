@@ -12,6 +12,7 @@ import { db } from "@/lib/firebase";
 export default function Home() {
   const [latestNews, setLatestNews] = useState<any>(null);
   const [latestTeaching, setLatestTeaching] = useState<any>(null);
+  const [latestAlbum, setLatestAlbum] = useState<any>(null); // 💡 架構師新增：儲存最新展覽
   const [profile, setProfile] = useState({ bio: "載入大師簡介中...", imageUrl: "" });
   const [isMenuOpen, setIsMenuOpen] = useState(false); 
   const [activeNotifIndex, setActiveNotifIndex] = useState(0); 
@@ -38,6 +39,12 @@ export default function Home() {
         const qTeach = query(collection(db, "teachings"), where("isArchived", "==", false), orderBy("createdAt", "desc"), limit(1));
         const snapTeach = await getDocs(qTeach);
         if (!snapTeach.empty) setLatestTeaching(snapTeach.docs[0].data());
+
+        // 💡 架構師新增：抓取最新的一個未歸檔展覽 (Album)
+        const qAlbum = query(collection(db, "albums"), where("isArchived", "==", false), orderBy("createdAt", "desc"), limit(1));
+        const snapAlbum = await getDocs(qAlbum);
+        if (!snapAlbum.empty) setLatestAlbum(snapAlbum.docs[0].data());
+
       } catch (error) { console.error("載入最新內容失敗:", error); }
     };
 
@@ -49,8 +56,19 @@ export default function Home() {
     const arr = [];
     if (latestNews) arr.push({ type: 'news', label: 'LATEST', text: `${latestNews.date.replace(/-/g, '.')} - ${latestNews.title}`, link: '/news' });
     if (latestTeaching) arr.push({ type: 'teaching', label: 'NEW RELEASE', text: latestTeaching.title, link: '/teachings' });
+    
+    // 💡 架構師新增：把最新展覽加入廣播，點擊後會直接導向展廳
+    if (latestAlbum) {
+      arr.push({ 
+        type: 'gallery', 
+        label: 'NEW EXHIBITION', 
+        text: `全新攝影展《${latestAlbum.title}》已發佈，歡迎前往展廳欣賞`, 
+        link: '/gallery' 
+      });
+    }
+
     return arr;
-  }, [latestNews, latestTeaching]);
+  }, [latestNews, latestTeaching, latestAlbum]); // 記得把 latestAlbum 加入依賴陣列
 
   useEffect(() => {
     if (notifications.length > 1) {
@@ -160,8 +178,17 @@ export default function Home() {
               <motion.div key={activeNotifIndex} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.5 }} className="w-[90%] md:w-auto">
                 <Link href={notifications[activeNotifIndex].link} className="group flex flex-row items-center gap-3 md:gap-5 border border-zinc-800/60 bg-zinc-900/20 backdrop-blur-sm px-4 py-3 md:px-6 hover:bg-zinc-800/40 hover:border-zinc-500 transition-all duration-700 mx-auto justify-center w-full">
                   <div className="flex items-center gap-2 md:gap-3 text-zinc-400 shrink-0">
-                    <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${notifications[activeNotifIndex].type === 'news' ? 'bg-white' : 'bg-amber-500'}`}></span>
-                    <span className={`text-[9px] md:text-[10px] tracking-[0.2em] uppercase ${notifications[activeNotifIndex].type === 'teaching' && 'text-amber-500'}`}>{notifications[activeNotifIndex].label}</span>
+                    {/* 💡 架構師更新：新增紅點判斷 */}
+                    <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                      notifications[activeNotifIndex].type === 'news' ? 'bg-white' : 
+                      notifications[activeNotifIndex].type === 'teaching' ? 'bg-amber-500' : 
+                      'bg-red-600'
+                    }`}></span>
+                    {/* 💡 架構師更新：新增紅字標籤判斷 */}
+                    <span className={`text-[9px] md:text-[10px] tracking-[0.2em] uppercase ${
+                      notifications[activeNotifIndex].type === 'teaching' ? 'text-amber-500' : 
+                      notifications[activeNotifIndex].type === 'gallery' ? 'text-red-500' : ''
+                    }`}>{notifications[activeNotifIndex].label}</span>
                   </div>
                   <div className="w-[1px] h-4 bg-zinc-700"></div>
                   <span className="font-serif text-[10px] md:text-sm tracking-widest text-zinc-300 group-hover:text-white transition-colors truncate">{notifications[activeNotifIndex].text}</span>
