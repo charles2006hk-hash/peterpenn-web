@@ -219,6 +219,8 @@ export default function GalleryPage() {
                     <h2 className="text-2xl tracking-[0.2em] text-white mb-2 uppercase">{album.title}</h2>
                     <span className="text-[10px] text-zinc-500 tracking-[0.4em] uppercase">Enter Collection</span>
                   </div>
+
+                  </motion.div>
                 </div>
               ))}
               <div className="shrink-0 w-[10vw]" />
