@@ -194,16 +194,31 @@ export default function GalleryPage() {
                   <div className="absolute bottom-[100%] w-[1px] h-[50vh] bg-gradient-to-t from-zinc-500 to-transparent z-0 opacity-50" />
 
                   <motion.div animate={{ y: [0, -15, 0], rotate: [-0.5, 0.5, -0.5] }} transition={{ duration: 6 + (index % 3), repeat: Infinity, ease: "easeInOut" }} className="relative z-10 w-full cursor-pointer group" onClick={() => handleSelectAlbum(album)}>
-                    <div className="relative w-full aspect-[3/4] bg-zinc-900 shadow-[0_30px_60px_rgba(0,0,0,0.9)] overflow-hidden flex items-center justify-center border border-zinc-800">
-                      {album.coverImage ? (
-                        <Image draggable={false} src={album.coverImage} alt={album.title} fill className="object-contain grayscale group-hover:grayscale-0 transition-all duration-[1500ms] pointer-events-none" />
-                      ) : (<FolderOpen size={48} className="text-zinc-800"/>)}
-                    </div>
-                    <div className="absolute -bottom-24 left-0 w-full text-center font-serif opacity-80 group-hover:opacity-100 transition-opacity duration-700">
-                      <h2 className="text-2xl tracking-[0.2em] text-white mb-2 uppercase">{album.title}</h2>
-                      <span className="text-[10px] text-zinc-500 tracking-[0.4em] uppercase">Enter Collection</span>
-                    </div>
-                  </motion.div>
+  
+                  {/* 邊框也會跟著連動亮起 */}
+                  <div className={`relative w-full aspect-[3/4] bg-zinc-900 shadow-[0_30px_60px_rgba(0,0,0,0.9)] overflow-hidden flex items-center justify-center border transition-colors duration-700 ${activeIndex === index ? 'border-zinc-500' : 'border-zinc-800 group-hover:border-zinc-500'}`}>
+                    
+                    {album.coverImage ? (
+                      <Image 
+                        draggable={false} 
+                        src={album.coverImage} 
+                        alt={album.title} 
+                        fill 
+                        // 💡 關鍵魔法：如果在中央 (activeIndex === index) 就顯示彩色並稍微放大，否則保持黑白等待滑鼠 hover
+                        className={`object-contain transition-all duration-[1500ms] pointer-events-none ${
+                          activeIndex === index 
+                            ? 'grayscale-0 scale-105' 
+                            : 'grayscale scale-100 group-hover:grayscale-0 group-hover:scale-105'
+                        }`} 
+                      />
+                    ) : (<FolderOpen size={48} className="text-zinc-800"/>)}
+                  </div>
+                
+                  {/* 下方的文字也會在滑動到中央時自動亮起 */}
+                  <div className={`absolute -bottom-24 left-0 w-full text-center font-serif transition-opacity duration-700 ${activeIndex === index ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'}`}>
+                    <h2 className="text-2xl tracking-[0.2em] text-white mb-2 uppercase">{album.title}</h2>
+                    <span className="text-[10px] text-zinc-500 tracking-[0.4em] uppercase">Enter Collection</span>
+                  </div>
                 </div>
               ))}
               <div className="shrink-0 w-[10vw]" />
