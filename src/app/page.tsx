@@ -1,8 +1,9 @@
 // src/app/page.tsx
 "use client";
 
-import { useEffect, useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+// 🟢 修改這兩行：
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { Camera, ChevronDown, ArrowRight, Menu, X, Mail, CheckCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -20,6 +21,8 @@ export default function Home() {
   // 💡 表單狀態控制
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const aboutImgRef = useRef(null);
+  const isAboutImgInView = useInView(aboutImgRef, { amount: 0.4 }); // 當照片露出 40% 時觸發
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -207,8 +210,7 @@ export default function Home() {
       {/* 關於大師 */}
       <section id="about" className="relative z-10 min-h-screen flex items-center px-6 md:px-24 py-20 bg-gradient-to-b from-transparent to-zinc-950/80">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-16">
-          // 🟢 升級版：混合 Hover 與 滾動對焦顯色 (與展廳首頁一致)
-          <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 1 }} className="w-full md:w-1/2 aspect-[3/4] relative bg-zinc-900 shadow-2xl overflow-hidden group">
+          <motion.div ref={aboutImgRef} initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 1 }} className="w-full md:w-1/2 aspect-[3/4] relative bg-zinc-900 shadow-2xl overflow-hidden group">
             {profile.imageUrl && (
               <Image 
                 src={profile.imageUrl} 
@@ -216,13 +218,10 @@ export default function Home() {
                 fill 
                 draggable={false} 
                 onContextMenu={(e) => e.preventDefault()} 
-                // 💡 關鍵魔法：
-                // 手機版 (iPhone)：當 activeIndex === index 時，顯示彩色並微微放大。
-                // 桌面版：當滑鼠懸停 (group-hover) 時，顯示彩色並微微放大。
-                // 否則：保持黑白。
+                // 💡 關鍵修復：完美分離手機與電腦的顯色邏輯！
                 className={`object-cover transition-all duration-1000 select-none pointer-events-none ${
-                  activeIndex === index 
-                    ? 'grayscale-0 scale-105' 
+                  isAboutImgInView 
+                    ? 'grayscale-0 scale-105 md:grayscale md:scale-100 md:group-hover:grayscale-0 md:group-hover:scale-105' 
                     : 'grayscale scale-100 group-hover:grayscale-0 group-hover:scale-105'
                 }`} 
               />
