@@ -207,8 +207,26 @@ export default function Home() {
       {/* 關於大師 */}
       <section id="about" className="relative z-10 min-h-screen flex items-center px-6 md:px-24 py-20 bg-gradient-to-b from-transparent to-zinc-950/80">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-16">
-          <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 1 }} className="w-full md:w-1/2 aspect-[3/4] relative bg-zinc-900 shadow-2xl overflow-hidden">
-            {profile.imageUrl && <Image src={profile.imageUrl} alt="PETERPENN POON" fill draggable={false} onContextMenu={(e) => e.preventDefault()} className="object-cover grayscale hover:grayscale-0 transition-all duration-1000 select-none pointer-events-none" />}
+          // 🟢 升級版：混合 Hover 與 滾動對焦顯色 (與展廳首頁一致)
+          <motion.div initial={{ opacity: 0, x: -50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 1 }} className="w-full md:w-1/2 aspect-[3/4] relative bg-zinc-900 shadow-2xl overflow-hidden group">
+            {profile.imageUrl && (
+              <Image 
+                src={profile.imageUrl} 
+                alt="PETERPENN POON" 
+                fill 
+                draggable={false} 
+                onContextMenu={(e) => e.preventDefault()} 
+                // 💡 關鍵魔法：
+                // 手機版 (iPhone)：當 activeIndex === index 時，顯示彩色並微微放大。
+                // 桌面版：當滑鼠懸停 (group-hover) 時，顯示彩色並微微放大。
+                // 否則：保持黑白。
+                className={`object-cover transition-all duration-1000 select-none pointer-events-none ${
+                  activeIndex === index 
+                    ? 'grayscale-0 scale-105' 
+                    : 'grayscale scale-100 group-hover:grayscale-0 group-hover:scale-105'
+                }`} 
+              />
+            )}
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 1 }} className="w-full md:w-1/2 space-y-8 font-serif leading-loose">
             <h3 className="text-2xl md:text-3xl tracking-[0.1em]">Equipment is secondary,<br/>vision is primary.</h3>
