@@ -143,7 +143,7 @@ export default function NewsPage() {
                         </div>
                       )}
 
-                      // 🟢 升級版代碼：加入 !event.videoUrl 判斷
+                      
                       {/* 2. 主海報渲染區塊 (💡 自動防呆：如果有影片，就不顯示海報，避免畫面重複) */}
                       {event.coverImage && !event.videoUrl && (
                         <div className="relative w-full max-w-3xl border border-zinc-800 overflow-hidden shadow-2xl bg-zinc-900">
