@@ -5,9 +5,8 @@ import { useEffect, useState } from "react";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
-import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, Loader2, PlayCircle, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Calendar, Loader2, MapPin } from "lucide-react"; // 💡 新增 MapPin 圖示
 
 interface NewsEvent {
   id: string;
@@ -18,10 +17,19 @@ interface NewsEvent {
   location: string;
   description: string;
   coverImage?: string; 
-  // 💡 架構師新增：為了支援花絮影片與多圖
-  videoUrl?: string;   // 用於存放 YouTube/Vimeo 的嵌入網址
-  images?: string[];   // 用於存放多張花絮照片
+  videoUrl?: string;   
+  images?: string[];   
 }
+
+// 💡 架構師新增：YouTube / Vimeo 嵌入網址自動轉換器 (解決哭臉問題)
+const getEmbedUrl = (url: string) => {
+  if (!url) return '';
+  const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+  if (ytMatch && ytMatch[1]) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+  const vimeoMatch = url.match(/(?:vimeo\.com\/)([0-9]+)/i);
+  if (vimeoMatch && vimeoMatch[1]) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  return url;
+};
 
 export default function NewsPage() {
   const [newsEvents, setNewsEvents] = useState<NewsEvent[]>([]);
@@ -37,7 +45,6 @@ export default function NewsPage() {
           ...doc.data(),
         })) as NewsEvent[];
         
-        // 依據 date 做二次排序 (由新到舊)
         setNewsEvents(events.sort((a, b) => b.date.localeCompare(a.date)));
       } catch (error) {
         console.error("無法載入動態:", error);
@@ -45,7 +52,6 @@ export default function NewsPage() {
         setLoading(false);
       }
     };
-
     fetchNews();
   }, []);
 
@@ -91,11 +97,9 @@ export default function NewsPage() {
                   transition={{ duration: 0.8, delay: 0.1 }}
                   className="relative group"
                 >
-                  {/* 時間軸圓點 */}
                   <div className={`absolute -left-[33px] md:-left-[49px] top-1.5 w-4 h-4 rounded-full border-2 border-[#0a0a0a] ${isUpcoming ? 'bg-white' : 'bg-zinc-700'}`} />
                   
                   <div className="font-serif w-full">
-                    {/* 日期與標籤 */}
                     <div className="flex flex-wrap items-baseline gap-4 mb-3">
                       <span className={`text-lg md:text-xl tracking-widest ${isUpcoming ? 'text-white' : 'text-zinc-500'}`}>
                         {formattedDate}{formattedEndDate}
@@ -105,19 +109,18 @@ export default function NewsPage() {
                       </span>
                     </div>
                     
-                    {/* 標題 */}
                     <h3 className="text-2xl md:text-3xl tracking-widest text-zinc-200 mt-4 mb-4 group-hover:text-white transition-colors leading-normal">
                       {event.title}
                     </h3>
                     
-                    {/* 地點 */}
+                    {/* 💡 解決雙 @ 問題：改用質感的 MapPin 地標圖示，並自動過濾掉字首的 @ */}
                     {event.location && (
-                      <p className="text-sm text-zinc-500 tracking-widest leading-loose mb-6">
-                        @ {event.location}
-                      </p>
+                      <div className="flex items-center gap-2 text-sm text-zinc-500 tracking-widest mb-6">
+                        <MapPin size={16} className="shrink-0" />
+                        <span>{event.location.replace(/^@\s*/, '')}</span>
+                      </div>
                     )}
                     
-                    {/* 內文描述 */}
                     {event.description && (
                       <p className="text-sm text-zinc-400 tracking-wide leading-relaxed italic text-justify whitespace-pre-wrap mb-10 max-w-2xl">
                         {event.description}
@@ -127,41 +130,40 @@ export default function NewsPage() {
                     {/* === 多媒體渲染區 === */}
                     <div className="flex flex-col gap-10">
                       
-                      {/* 1. 影片嵌入區塊 (YouTube/Vimeo) */}
+                      {/* 1. 影片嵌入區塊 (解決哭臉問題) */}
                       {event.videoUrl && (
                         <div className="relative w-full max-w-3xl aspect-video bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
                           <iframe 
-                            src={event.videoUrl} 
+                            src={getEmbedUrl(event.videoUrl)} 
                             title={`${event.title} Video`}
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                             allowFullScreen
-                            className="absolute top-0 left-0 w-full h-full"
+                            className="absolute top-0 left-0 w-full h-full border-0"
                           />
                         </div>
                       )}
 
-                      {/* 2. 主海報渲染區塊 */}
+                      {/* 2. 主海報渲染區塊 (💡 解決圖片裁切問題) */}
                       {event.coverImage && (
-                        <div className="relative w-full max-w-xl aspect-[3/4] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
-                          <Image 
+                        // 取消強制的 aspect-[3/4]，改用自適應寬高的原生 img 標籤
+                        <div className="relative w-full max-w-3xl border border-zinc-800 overflow-hidden shadow-2xl bg-zinc-900">
+                          <img 
                             src={event.coverImage} 
                             alt={event.title} 
-                            fill 
-                            className="object-cover hover:scale-[1.02] transition-transform duration-700" 
+                            className="w-full h-auto object-contain hover:scale-[1.02] transition-transform duration-700" 
                           />
                         </div>
                       )}
 
-                      {/* 3. 多圖活動花絮渲染區塊 (Grid 網格排列) */}
+                      {/* 3. 多圖活動花絮渲染區塊 (網格排列) */}
                       {event.images && event.images.length > 0 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
                           {event.images.map((img, idx) => (
                             <div key={idx} className="relative w-full aspect-[4/3] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-lg group/img">
-                              <Image 
+                              <img 
                                 src={img} 
                                 alt={`Highlight ${idx + 1}`} 
-                                fill 
-                                className="object-cover grayscale group-hover/img:grayscale-0 hover:scale-105 transition-all duration-700" 
+                                className="w-full h-full object-cover grayscale group-hover/img:grayscale-0 hover:scale-105 transition-all duration-700" 
                               />
                             </div>
                           ))}
