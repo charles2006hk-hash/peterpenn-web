@@ -30,10 +30,11 @@ const getEmbedUrl = (url: string) => {
   return url;
 };
 
-// 💡 架構師新增：專屬的「自動輪播與動態縮放」底片捲軸模組
+// 💡 架構師升級版：自動輪播模組 (2.5秒 + 滑鼠/觸控暫停)
 const AutoCarousel = ({ images }: { images: string[] }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false); // 💡 新增：控制是否暫停輪播
 
   // 1. 監聽哪一張照片在正中央
   useEffect(() => {
@@ -51,8 +52,11 @@ const AutoCarousel = ({ images }: { images: string[] }) => {
     return () => observer.disconnect();
   }, [images]);
 
-  // 2. 自動輪播邏輯 (每 3 秒執行一次)
+  // 2. 自動輪播邏輯 (改為 2.5 秒)
   useEffect(() => {
+    // 💡 如果 isPaused 為 true (滑鼠停留或手指按住)，就直接 return 不設定計時器
+    if (isPaused) return;
+
     const interval = setInterval(() => {
       if (!containerRef.current) return;
       const maxIndex = images.length - 1;
@@ -62,23 +66,29 @@ const AutoCarousel = ({ images }: { images: string[] }) => {
       const nextElement = elements[nextIndex] as HTMLElement;
       
       if (nextElement) {
-        // 使用精準的水平滾動，避免網頁上下亂跳
         const container = containerRef.current;
         container.scrollTo({
           left: nextElement.offsetLeft - container.offsetLeft - (container.clientWidth - nextElement.clientWidth) / 2,
           behavior: 'smooth'
         });
       }
-    }, 3000); // 3000毫秒 = 3秒切換一次
+    }, 2500); // 💡 速度升級：2500毫秒 = 2.5秒
     
-    // 如果使用者手動滑動，會重置計時器，非常聰明！
     return () => clearInterval(interval);
-  }, [activeIndex, images.length]);
+  }, [activeIndex, images.length, isPaused]); // 加入 isPaused 作為依賴
 
   if (!images || images.length === 0) return null;
 
   return (
-    <div className="relative w-full overflow-hidden py-10 md:py-16">
+    <div 
+      className="relative w-full overflow-hidden py-10 md:py-16"
+      // 💡 電腦版：滑鼠移入暫停，移出恢復
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      // 💡 iPhone 手機版：手指碰觸時暫停，手指離開後延遲 1 秒再恢復 (保護滑動體驗)
+      onTouchStart={() => setIsPaused(true)}
+      onTouchEnd={() => setTimeout(() => setIsPaused(false), 1000)}
+    >
       <div 
         ref={containerRef} 
         className="flex overflow-x-auto snap-x snap-mandatory gap-4 no-scrollbar w-full md:max-w-3xl items-center" 
@@ -90,7 +100,6 @@ const AutoCarousel = ({ images }: { images: string[] }) => {
             <div
               key={idx}
               data-index={idx}
-              // 💡 關鍵：拿掉 grayscale (保持全彩)，並加入 scale 動畫
               className={`carousel-item relative w-[75vw] md:w-[65%] shrink-0 aspect-[4/3] bg-zinc-900 border border-zinc-800 shadow-lg snap-center transition-all duration-[1000ms] ease-out origin-center ${
                 isActive ? 'scale-[1.15] opacity-100 z-10 shadow-2xl' : 'scale-90 opacity-30 z-0'
               }`}
