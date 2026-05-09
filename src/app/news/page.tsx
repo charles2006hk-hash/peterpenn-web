@@ -6,7 +6,7 @@ import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, Loader2, MapPin } from "lucide-react"; // 💡 新增 MapPin 圖示
+import { ArrowLeft, Calendar, Loader2, MapPin } from "lucide-react";
 
 interface NewsEvent {
   id: string;
@@ -21,7 +21,6 @@ interface NewsEvent {
   images?: string[];   
 }
 
-// 💡 架構師新增：YouTube / Vimeo 嵌入網址自動轉換器 (解決哭臉問題)
 const getEmbedUrl = (url: string) => {
   if (!url) return '';
   const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
@@ -99,7 +98,7 @@ export default function NewsPage() {
                 >
                   <div className={`absolute -left-[33px] md:-left-[49px] top-1.5 w-4 h-4 rounded-full border-2 border-[#0a0a0a] ${isUpcoming ? 'bg-white' : 'bg-zinc-700'}`} />
                   
-                  <div className="font-serif w-full">
+                  <div className="font-serif w-full max-w-[100vw]">
                     <div className="flex flex-wrap items-baseline gap-4 mb-3">
                       <span className={`text-lg md:text-xl tracking-widest ${isUpcoming ? 'text-white' : 'text-zinc-500'}`}>
                         {formattedDate}{formattedEndDate}
@@ -109,11 +108,10 @@ export default function NewsPage() {
                       </span>
                     </div>
                     
-                    <h3 className="text-2xl md:text-3xl tracking-widest text-zinc-200 mt-4 mb-4 group-hover:text-white transition-colors leading-normal">
+                    <h3 className="text-2xl md:text-3xl tracking-widest text-zinc-200 mt-4 mb-4 group-hover:text-white transition-colors leading-normal max-w-3xl">
                       {event.title}
                     </h3>
                     
-                    {/* 💡 解決雙 @ 問題：改用質感的 MapPin 地標圖示，並自動過濾掉字首的 @ */}
                     {event.location && (
                       <div className="flex items-center gap-2 text-sm text-zinc-500 tracking-widest mb-6">
                         <MapPin size={16} className="shrink-0" />
@@ -127,10 +125,8 @@ export default function NewsPage() {
                       </p>
                     )}
                     
-                    {/* === 多媒體渲染區 === */}
                     <div className="flex flex-col gap-10">
                       
-                      {/* 1. 影片嵌入區塊 (解決哭臉問題) */}
                       {event.videoUrl && (
                         <div className="relative w-full max-w-3xl aspect-video bg-zinc-900 border border-zinc-800 overflow-hidden shadow-2xl">
                           <iframe 
@@ -143,8 +139,6 @@ export default function NewsPage() {
                         </div>
                       )}
 
-                      
-                      {/* 2. 主海報渲染區塊 (💡 自動防呆：如果有影片，就不顯示海報，避免畫面重複) */}
                       {event.coverImage && !event.videoUrl && (
                         <div className="relative w-full max-w-3xl border border-zinc-800 overflow-hidden shadow-2xl bg-zinc-900">
                           <img 
@@ -155,15 +149,15 @@ export default function NewsPage() {
                         </div>
                       )}
 
-                      {/* 3. 多圖活動花絮渲染區塊 (網格排列) */}
+                      {/* 💡 升級：橫向底片捲軸 (解決版面臃腫) */}
                       {event.images && event.images.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+                        <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-6 no-scrollbar w-full md:max-w-3xl">
                           {event.images.map((img, idx) => (
-                            <div key={idx} className="relative w-full aspect-[4/3] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-lg group/img">
+                            <div key={idx} className="relative w-[85vw] md:w-[65%] shrink-0 aspect-[4/3] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-lg snap-center group/img">
                               <img 
                                 src={img} 
                                 alt={`Highlight ${idx + 1}`} 
-                                className="w-full h-full object-cover grayscale group-hover/img:grayscale-0 hover:scale-105 transition-all duration-700" 
+                                className="w-full h-full object-cover grayscale group-hover/img:grayscale-0 transition-all duration-700" 
                               />
                             </div>
                           ))}
