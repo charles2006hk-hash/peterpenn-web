@@ -96,6 +96,43 @@ export default function GalleryPage() {
     if (elements[index]) elements[index].scrollIntoView({ behavior: 'smooth', inline: 'center' });
   };
 
+  // 💡 架構師新增：全域鍵盤方向鍵導航與 Esc 返回
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 情況 A：如果目前在「燈箱模式 (放大單張照片)」下
+      if (selectedLightboxPhoto) {
+        const currentIndex = photos.findIndex(p => p.id === selectedLightboxPhoto.id);
+        if (e.key === 'ArrowLeft' && currentIndex > 0) {
+          setSelectedLightboxPhoto(photos[currentIndex - 1]);
+        } else if (e.key === 'ArrowRight' && currentIndex < photos.length - 1) {
+          setSelectedLightboxPhoto(photos[currentIndex + 1]);
+        } else if (e.key === 'Escape') {
+          setSelectedLightboxPhoto(null); // 按 Esc 關閉燈箱
+        }
+        return; // 在燈箱模式下，攔截按鍵，不要觸發底下的畫廊滾動
+      }
+
+      // 情況 B：如果在「一般畫廊瀏覽」模式下 (相簿列表 或 某系列內的相片)
+      const maxIndex = selectedAlbum ? photos.length - 1 : albums.length - 1;
+      if (maxIndex < 0) return;
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault(); // 防止按鍵讓整個網頁亂跳
+        const newIndex = Math.max(0, activeIndex - 1);
+        scrollToPhoto(newIndex);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const newIndex = Math.min(maxIndex, activeIndex + 1);
+        scrollToPhoto(newIndex);
+      } else if (e.key === 'Escape' && selectedAlbum) {
+        setSelectedAlbum(null); // 按 Esc 快速返回「所有系列列表」
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeIndex, selectedAlbum, photos, albums, selectedLightboxPhoto]);
+
   useEffect(() => {
     document.body.style.overflow = selectedLightboxPhoto ? "hidden" : "auto";
     return () => { document.body.style.overflow = "auto"; };
@@ -122,7 +159,6 @@ export default function GalleryPage() {
           )}
         </div>
         
-        {/* 💡 修復 1：右上角快速導航縮圖 (系列 Album 縮圖) 加回來了 */}
         {!loadingAlbums && albums.length > 0 && (
           <div className="flex items-center gap-3 overflow-x-auto max-w-[50%] md:max-w-full pb-2 no-scrollbar pointer-events-auto">
             {albums.map((album) => (
@@ -147,7 +183,6 @@ export default function GalleryPage() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.8, delay: 0.2 }}
             ref={thumbScrollRef}
-            // 💡 修復 2：稍微往下放一點點，避免跟頂部 Header 太擠
             className="absolute top-20 md:top-24 left-1/2 -translate-x-1/2 w-auto max-w-[85vw] md:max-w-[60vw] overflow-x-auto no-scrollbar z-40 flex items-center gap-3 px-10 py-2 mask-edges pointer-events-auto"
           >
             {photos.map((photo, index) => {
@@ -195,16 +230,13 @@ export default function GalleryPage() {
 
                   <motion.div animate={{ y: [0, -15, 0], rotate: [-0.5, 0.5, -0.5] }} transition={{ duration: 6 + (index % 3), repeat: Infinity, ease: "easeInOut" }} className="relative z-10 w-full cursor-pointer group" onClick={() => handleSelectAlbum(album)}>
   
-                  {/* 邊框也會跟著連動亮起 */}
                   <div className={`relative w-full aspect-[3/4] bg-zinc-900 shadow-[0_30px_60px_rgba(0,0,0,0.9)] overflow-hidden flex items-center justify-center border transition-colors duration-700 ${activeIndex === index ? 'border-zinc-500' : 'border-zinc-800 group-hover:border-zinc-500'}`}>
-                    
                     {album.coverImage ? (
                       <Image 
                         draggable={false} 
                         src={album.coverImage} 
                         alt={album.title} 
                         fill 
-                        // 💡 關鍵魔法：如果在中央 (activeIndex === index) 就顯示彩色並稍微放大，否則保持黑白等待滑鼠 hover
                         className={`object-contain transition-all duration-[1500ms] pointer-events-none ${
                           activeIndex === index 
                             ? 'grayscale-0 scale-105' 
@@ -214,7 +246,6 @@ export default function GalleryPage() {
                     ) : (<FolderOpen size={48} className="text-zinc-800"/>)}
                   </div>
                 
-                  {/* 下方的文字也會在滑動到中央時自動亮起 */}
                   <div className={`absolute -bottom-24 left-0 w-full text-center font-serif transition-opacity duration-700 ${activeIndex === index ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'}`}>
                     <h2 className="text-2xl tracking-[0.2em] text-white mb-2 uppercase">{album.title}</h2>
                     <span className="text-[10px] text-zinc-500 tracking-[0.4em] uppercase">Enter Collection</span>
@@ -227,7 +258,6 @@ export default function GalleryPage() {
             </div>
           )}
           
-          {/* 首頁進度指示器 */}
           {!loadingAlbums && albums.length > 1 && (
             <div className="absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center z-40 pointer-events-none">
               <div className="text-[10px] font-serif tracking-[0.4em] text-white mb-3 flex items-center">
@@ -252,16 +282,13 @@ export default function GalleryPage() {
                <button onClick={() => setSelectedAlbum(null)} className="text-xs uppercase border border-zinc-800 px-4 py-2 hover:bg-white hover:text-black transition-all pointer-events-auto">返回列表</button>
             </div>
           ) : (
-            // 💡 修復 2：加上 pt-24 pb-20 增加上下內距，把照片往下推，避免被縮圖遮住
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center h-full w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory px-[15vw] gap-[8vw] md:gap-[10vw] no-scrollbar overscroll-x-none pt-28 pb-20" style={{ scrollbarWidth: 'none' }} ref={scrollContainerRef}>
               {photos.map((photo, index) => (
                 <div key={photo.id} data-index={index} className="photo-item relative flex flex-col items-center justify-center shrink-0 w-[85vw] md:w-[70vw] max-w-[1000px] h-full snap-center cursor-zoom-in" onClick={() => setSelectedLightboxPhoto(photo)}>
                   
                   <div className={`relative transition-all duration-700 ease-out flex justify-center items-center ${activeIndex === index ? 'opacity-100 scale-100' : 'opacity-30 scale-90 grayscale'}`}>
                     
-                    {/* 💡 修復 3：改用 inline-flex 讓容器「緊貼」圖片邊緣 */}
                     <div className="relative inline-flex max-w-full max-h-full shadow-[0_40px_100px_rgba(0,0,0,0.8)]">
-                      {/* 放棄 Image fill，改用原生的 img，確保容器與圖片一樣大 */}
                       <img 
                         draggable={false} 
                         src={photo.imageUrl} 
@@ -269,16 +296,15 @@ export default function GalleryPage() {
                         className="max-h-[60vh] md:max-h-[70vh] w-auto object-contain pointer-events-none" 
                       />
                       
-                      {/* 💡 畫廊印章：現在會完美緊貼在「相片本身」的右下角，且顏色是鮮豔的紅！ */}
+                      {/* 💡 畫廊印章：改為限制高度 (h-8 md:h-12 w-auto) */}
                       {activeIndex === index && (
                         <motion.div 
                           initial={{ opacity: 0 }} 
                           animate={{ opacity: 0.85 }} 
                           transition={{ delay: 0.5 }}
-                          // 移除了 grayscale，保留原本紅印章顏色，加上 drop-shadow 讓它在黑白圖上更明顯
-                          className="absolute bottom-2 right-2 md:bottom-4 md:right-4 w-6 md:w-10 pointer-events-none select-none drop-shadow-md"
+                          className="absolute bottom-2 right-2 md:bottom-4 md:right-4 h-8 md:h-12 w-auto pointer-events-none select-none drop-shadow-md"
                         >
-                          <img src="/logo.png" alt="Stamp" className="w-full h-auto" />
+                          <img src="/logo.png" alt="Stamp" className="w-full h-full object-contain" />
                         </motion.div>
                       )}
                     </div>
@@ -306,13 +332,12 @@ export default function GalleryPage() {
         </section>
       )}
 
-      {/* === 💡 燈箱防盜 (放大觀看時同步修復) === */}
+      {/* === 💡 燈箱防盜 (放大觀看時) === */}
       <AnimatePresence>
         {selectedLightboxPhoto && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/98 backdrop-blur-xl cursor-zoom-out" onClick={() => setSelectedLightboxPhoto(null)}>
             <button className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors z-[110]"><X size={32} strokeWidth={1} /></button>
             
-            {/* 一樣使用緊貼容器 */}
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="relative inline-flex max-w-[95vw] max-h-[85vh] px-4">
               
               <img 
@@ -322,9 +347,9 @@ export default function GalleryPage() {
                 className="max-w-full max-h-[85vh] w-auto object-contain pointer-events-none shadow-2xl" 
               />
               
-              {/* 燈箱紅色印章 */}
-              <div className="absolute bottom-6 right-6 w-10 md:w-14 opacity-90 pointer-events-none select-none drop-shadow-lg">
-                <img src="/logo.png" alt="Stamp" className="w-full h-auto" />
+              {/* 💡 燈箱紅色印章：改為限制高度 (h-12 md:h-16 w-auto) */}
+              <div className="absolute bottom-6 right-6 h-12 md:h-16 w-auto opacity-90 pointer-events-none select-none drop-shadow-lg">
+                <img src="/logo.png" alt="Stamp" className="w-full h-full object-contain" />
               </div>
 
             </motion.div>
