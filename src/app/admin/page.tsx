@@ -11,7 +11,6 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Camera, LogOut, UploadCloud, Image as ImageIcon, BookOpen, Calendar, Settings, Plus, Trash2, User as UserIcon, Edit2, EyeOff, Eye, X, Video, Play, Folder, Images, Save } from "lucide-react";
 
-// 動態載入 ReactQuill，關閉 SSR
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
 import "react-quill-new/dist/quill.snow.css";
 
@@ -21,7 +20,6 @@ export default function AdminDashboard() {
   const [password, setPassword] = useState("");
   const [activeTab, setActiveTab] = useState("gallery");
   
-  // === 系統全域設置 (Settings) ===
   const [bio, setBio] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [profileFile, setProfileFile] = useState<File | null>(null);
@@ -30,12 +28,10 @@ export default function AdminDashboard() {
   const [newCategory, setNewCategory] = useState("");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
-  // === 📸 Gallery 2.0 (分層架構) 狀態 ===
   const [albums, setAlbums] = useState<any[]>([]);
-  const [currentAlbum, setCurrentAlbum] = useState<any | null>(null); // 當前進入的系列
+  const [currentAlbum, setCurrentAlbum] = useState<any | null>(null); 
   const [albumPhotos, setAlbumPhotos] = useState<any[]>([]);
   
-  // 建立/編輯系列表單
   const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null);
   const [albumTitle, setAlbumTitle] = useState("");
   const [albumDesc, setAlbumDesc] = useState("");
@@ -45,11 +41,10 @@ export default function AdminDashboard() {
   const [albumIsArchived, setAlbumIsArchived] = useState(false);
   const [isSavingAlbum, setIsSavingAlbum] = useState(false);
 
-  // 批量上傳狀態
   const [batchUploading, setBatchUploading] = useState(false);
   const [batchProgress, setBatchProgress] = useState("");
 
-  // === News 狀態 ===
+  // === 💡 News 狀態 (新增多圖陣列支援) ===
   const [newsList, setNewsList] = useState<any[]>([]);
   const [editingNewsId, setEditingNewsId] = useState<string | null>(null);
   const [newsIsArchived, setNewsIsArchived] = useState(false);
@@ -62,9 +57,11 @@ export default function AdminDashboard() {
   const [newsVideoUrl, setNewsVideoUrl] = useState("");
   const [newsFile, setNewsFile] = useState<File | null>(null);
   const [newsPreviewUrl, setNewsPreviewUrl] = useState<string | null>(null);
+  // 新增：花絮多圖狀態
+  const [existingNewsImages, setExistingNewsImages] = useState<string[]>([]);
+  const [newsImagesFiles, setNewsImagesFiles] = useState<File[]>([]);
   const [newsUploading, setNewsUploading] = useState(false);
 
-  // === Teachings 狀態 ===
   const [teachList, setTeachList] = useState<any[]>([]);
   const [editingTeachId, setEditingTeachId] = useState<string | null>(null);
   const [teachIsArchived, setTeachIsArchived] = useState(false);
@@ -79,11 +76,9 @@ export default function AdminDashboard() {
   const [teachPreviewUrl, setTeachPreviewUrl] = useState<string | null>(null);
   const [teachUploading, setTeachUploading] = useState(false);
 
-  // 💡 自動萃取歷史紀錄中的「所有系列」與「所有標籤」
   const existingSeries = Array.from(new Set(teachList.map(t => t.seriesName).filter(Boolean)));
   const existingTags = Array.from(new Set(teachList.flatMap(t => t.tags || []))).filter(Boolean);
 
-  // === 初始化載入 ===
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => setUser(currentUser));
     const fetchSettings = async () => {
@@ -107,7 +102,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === "news") fetchNewsList();
     if (activeTab === "teachings") fetchTeachList();
-    if (activeTab === "gallery") fetchAlbums(); // 💡 載入系列清單
+    if (activeTab === "gallery") fetchAlbums(); 
   }, [activeTab]);
 
   const fetchNewsList = async () => {
@@ -135,7 +130,7 @@ export default function AdminDashboard() {
         setProfileFile(selectedFile);
         if (profilePreviewUrl && profilePreviewUrl.startsWith('blob:')) URL.revokeObjectURL(profilePreviewUrl);
         setProfilePreviewUrl(url);
-      } else if (type === "album") { // 💡 Gallery 2.0
+      } else if (type === "album") { 
         setAlbumCoverFile(selectedFile);
         if (albumCoverUrl && albumCoverUrl.startsWith('blob:')) URL.revokeObjectURL(albumCoverUrl);
         setAlbumCoverUrl(url);
@@ -151,7 +146,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // === Settings 邏輯 ===
   const handleSaveProfile = async () => {
     setIsSavingSettings(true);
     try {
@@ -183,9 +177,6 @@ export default function AdminDashboard() {
   };
 
 
-  // ==========================================
-  // 📸 Gallery 2.0 核心邏輯 (系列與相片管理)
-  // ==========================================
   const fetchAlbums = async () => {
     const q = query(collection(db, "albums"), orderBy("createdAt", "desc"));
     const snap = await getDocs(q);
@@ -193,7 +184,6 @@ export default function AdminDashboard() {
   };
 
   const fetchPhotos = async (albumId: string) => {
-    // 前台需要依照 order 排序，這裡也依照 order 排序顯示
     const q = query(collection(db, "photos"), where("albumId", "==", albumId), orderBy("order", "asc"));
     const snap = await getDocs(q);
     setAlbumPhotos(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -209,7 +199,6 @@ export default function AdminDashboard() {
     setIsSavingAlbum(true);
     try {
       let finalCover = albumCoverUrl;
-      // 封面圖壓縮 (200KB以下)
       if (albumCoverFile) {
         const compressed = await imageCompression(albumCoverFile, { maxSizeMB: 0.2, maxWidthOrHeight: 1920 });
         const sRef = ref(storage, `albums/cover_${Date.now()}`);
@@ -240,7 +229,6 @@ export default function AdminDashboard() {
     fetchAlbums();
   };
 
-  // 💡 批量上傳相片
   const handleBatchUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0 || !currentAlbum) return;
@@ -250,13 +238,11 @@ export default function AdminDashboard() {
       for (let i = 0; i < files.length; i++) {
         setBatchProgress(`處理中... 第 ${i + 1} 張 / 共 ${files.length} 張`);
         const file = files[i];
-        // 強制無損壓縮，控制在 200KB 左右，最大邊長 1920px
         const compressed = await imageCompression(file, { maxSizeMB: 0.2, maxWidthOrHeight: 1920, useWebWorker: true });
         const sRef = ref(storage, `photos/${currentAlbum.id}/${Date.now()}_${i}`);
         await uploadBytesResumable(sRef, compressed);
         const url = await getDownloadURL(sRef);
 
-        // 存入 photos 集合，預設 order 為當前陣列長度 + i
         await addDoc(collection(db, "photos"), {
           albumId: currentAlbum.id,
           imageUrl: url,
@@ -265,7 +251,7 @@ export default function AdminDashboard() {
         });
       }
       alert(`成功上傳 ${files.length} 張相片！`);
-      fetchPhotos(currentAlbum.id); // 重新抓取該系列的相片
+      fetchPhotos(currentAlbum.id);
     } catch (err) {
       console.error(err); alert("部分上傳發生錯誤，請檢查網路連線。");
     } finally {
@@ -275,7 +261,7 @@ export default function AdminDashboard() {
 
   const handleUpdatePhotoOrder = async (photoId: string, newOrder: number) => {
     await updateDoc(doc(db, "photos", photoId), { order: newOrder });
-    fetchPhotos(currentAlbum!.id); // 重新抓取以更新排序
+    fetchPhotos(currentAlbum!.id); 
   };
 
   const handleDeletePhoto = async (photoId: string) => {
@@ -285,7 +271,6 @@ export default function AdminDashboard() {
   };
 
 
-  // === Teachings 邏輯 ===
   const resetTeachForm = () => {
     setEditingTeachId(null); setTeachTitle(""); setTeachTags(""); setTeachSeries(""); setTeachChapter(""); setTeachVideoUrl(""); setTeachContent(""); setTeachFile(null); setTeachPreviewUrl(null); setTeachIsArchived(false);
   };
@@ -328,9 +313,14 @@ export default function AdminDashboard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // === News 邏輯 ===
+  // === 💡 News 邏輯 (包含多圖壓縮與上傳) ===
   const resetNewsForm = () => {
     setEditingNewsId(null); setNewsTitle(""); setNewsDate(""); setNewsEndDate(""); setNewsLocation(""); setNewsDesc(""); setNewsVideoUrl(""); setNewsIsArchived(false); setNewsFile(null); setNewsPreviewUrl(null);
+    setNewsImagesFiles([]); setExistingNewsImages([]); // 清空多圖
+  };
+
+  const removeExistingNewsImage = (index: number) => {
+    setExistingNewsImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleNewsSubmit = async (e: React.FormEvent) => {
@@ -338,25 +328,43 @@ export default function AdminDashboard() {
     if (!newsTitle || !newsDate) return alert("請填寫標題與開始日期");
     setNewsUploading(true);
     try {
+      // 1. 處理宣傳海報上傳
       let finalCoverImage = newsPreviewUrl;
       if (newsFile) {
         const compressedFile = await imageCompression(newsFile, { maxSizeMB: 0.2, maxWidthOrHeight: 1920 });
-        const storageRef = ref(storage, `works/news_${Date.now()}`);
+        const storageRef = ref(storage, `works/news_cover_${Date.now()}`);
         await uploadBytesResumable(storageRef, compressedFile);
         finalCoverImage = await getDownloadURL(storageRef);
       }
-      const newsData = { title: newsTitle, date: newsDate, endDate: newsEndDate, type: newsType, location: newsLocation, description: newsDesc, videoUrl: newsVideoUrl, coverImage: finalCoverImage || "", isArchived: newsIsArchived };
+
+      // 2. 處理花絮多圖壓縮與上傳
+      let newUploadedImageUrls: string[] = [];
+      if (newsImagesFiles.length > 0) {
+        for (let i = 0; i < newsImagesFiles.length; i++) {
+          const file = newsImagesFiles[i];
+          const compressed = await imageCompression(file, { maxSizeMB: 0.2, maxWidthOrHeight: 1920, useWebWorker: true });
+          const storageRef = ref(storage, `works/news_images_${Date.now()}_${i}`);
+          await uploadBytesResumable(storageRef, compressed);
+          const url = await getDownloadURL(storageRef);
+          newUploadedImageUrls.push(url);
+        }
+      }
+      // 合併舊圖與新圖陣列
+      const finalImagesArray = [...existingNewsImages, ...newUploadedImageUrls];
+
+      const newsData = { title: newsTitle, date: newsDate, endDate: newsEndDate, type: newsType, location: newsLocation, description: newsDesc, videoUrl: newsVideoUrl, coverImage: finalCoverImage || "", images: finalImagesArray, isArchived: newsIsArchived };
 
       if (editingNewsId) await updateDoc(doc(db, "news", editingNewsId), newsData);
       else await addDoc(collection(db, "news"), { ...newsData, createdAt: serverTimestamp() });
       
       alert("儲存成功");
       resetNewsForm(); fetchNewsList();
-    } catch (e) { alert("失敗"); } finally { setNewsUploading(false); }
+    } catch (e) { alert("上傳失敗，請檢查網路連線。"); } finally { setNewsUploading(false); }
   };
 
   const handleEditNews = (item: any) => {
     setEditingNewsId(item.id); setNewsTitle(item.title); setNewsDate(item.date); setNewsEndDate(item.endDate || ""); setNewsType(item.type); setNewsLocation(item.location || ""); setNewsDesc(item.description || ""); setNewsVideoUrl(item.videoUrl || ""); setNewsIsArchived(item.isArchived || false); setNewsPreviewUrl(item.coverImage || null); setNewsFile(null);
+    setExistingNewsImages(item.images || []); setNewsImagesFiles([]); // 載入舊有的多圖
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -379,12 +387,10 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex overflow-hidden">
-      {/* 側邊選單 */}
       <aside className="w-64 border-r border-zinc-800 p-8 flex flex-col justify-between hidden md:flex bg-black z-10 shrink-0">
         <div>
           <h1 className="font-serif text-lg tracking-[0.2em] mb-12 text-zinc-400 uppercase">PETERPENN<br/><span className="text-xs">Admin Panel</span></h1>
           <nav className="space-y-4">
-            {/* 💡 點擊 Gallery 時重置 currentAlbum，回到系列列表 */}
             <button onClick={() => {setActiveTab("gallery"); setCurrentAlbum(null);}} className={`flex items-center gap-3 w-full text-left text-sm tracking-widest p-3 transition-colors ${activeTab === 'gallery' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}><ImageIcon size={16} /> 展廳 2.0</button>
             <button onClick={() => setActiveTab("teachings")} className={`flex items-center gap-3 w-full text-left text-sm tracking-widest p-3 transition-colors ${activeTab === 'teachings' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}><BookOpen size={16} /> 媒體與教學</button>
             <button onClick={() => setActiveTab("news")} className={`flex items-center gap-3 w-full text-left text-sm tracking-widest p-3 transition-colors ${activeTab === 'news' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}><Calendar size={16} /> 最新動態</button>
@@ -401,8 +407,6 @@ export default function AdminDashboard() {
             ========================================== */}
         {activeTab === "gallery" && (
           <div className="max-w-6xl mx-auto space-y-16 pb-20">
-            
-            {/* 視圖 A：管理單一系列內的相片 */}
             {currentAlbum ? (
               <section>
                 <header className="mb-12 border-b border-zinc-800 pb-6 flex items-center justify-between">
@@ -413,7 +417,6 @@ export default function AdminDashboard() {
                     </h2>
                   </div>
                   
-                  {/* 💡 批量上傳區塊 */}
                   <div className="relative">
                     <input type="file" multiple accept="image/*" onChange={handleBatchUpload} disabled={batchUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" />
                     <button disabled={batchUploading} className="flex items-center gap-2 bg-white text-black px-6 py-3 font-bold tracking-widest text-sm uppercase hover:bg-zinc-300 transition-colors">
@@ -445,7 +448,6 @@ export default function AdminDashboard() {
                 </div>
               </section>
             ) : (
-              /* 視圖 B：系列 (Album) 總覽與新增 */
               <>
                 <section>
                   <header className="mb-12 border-b border-zinc-800 pb-6 flex justify-between items-end">
@@ -630,7 +632,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* === 模組：最新動態 === */}
+        {/* === 模組：最新動態 (支援花絮多圖) === */}
         {activeTab === "news" && (
           <div className="max-w-5xl mx-auto space-y-16 pb-20">
             <section>
@@ -668,20 +670,44 @@ export default function AdminDashboard() {
                   </div>
 
                   <textarea placeholder="詳細描述" value={newsDesc} onChange={(e) => setNewsDesc(e.target.value)} rows={4} className="w-full bg-zinc-900 border border-zinc-800 p-3 outline-none focus:border-zinc-500" />
-                  <div>
-                    <label className="block text-xs tracking-widest text-zinc-500 mb-2">宣傳海報 (選填)</label>
-                    <input type="file" accept="image/*" onChange={(e)=>handleFileSelect(e,"news")} className="w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-xs file:bg-zinc-800 file:text-white hover:file:bg-zinc-700 cursor-pointer" />
+                  
+                  {/* 💡 升級：多圖花絮上傳按鈕 */}
+                  <div className="bg-zinc-900/50 border border-zinc-800 p-4">
+                    <label className="block text-xs tracking-widest text-zinc-500 mb-4 flex items-center gap-2"><Images size={14}/> 活動花絮相片 (可多選，將顯示為橫向捲軸)</label>
+                    <input type="file" multiple accept="image/*" onChange={(e)=>setNewsImagesFiles(Array.from(e.target.files || []))} className="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:border-0 file:bg-zinc-800 file:text-white hover:file:bg-zinc-700 cursor-pointer" />
+                    {newsImagesFiles.length > 0 && <p className="text-xs text-emerald-500 mt-3 tracking-widest">已選擇 {newsImagesFiles.length} 張新照片準備上傳。</p>}
                   </div>
-                  <button disabled={newsUploading} className="w-full flex items-center justify-center gap-3 bg-white text-black py-4 hover:bg-zinc-200 uppercase tracking-widest transition-colors"><UploadCloud size={18} /> {newsUploading ? "處理中..." : (editingNewsId ? "更新動態" : "發佈動態")}</button>
+
+                  <button disabled={newsUploading} className="w-full flex items-center justify-center gap-3 bg-white text-black py-4 hover:bg-zinc-200 uppercase tracking-widest transition-colors font-bold"><UploadCloud size={18} /> {newsUploading ? "上傳中，請稍候..." : (editingNewsId ? "更新動態" : "發佈動態")}</button>
                 </form>
                 
-                <div className="bg-zinc-900/50 border border-zinc-800 flex items-center justify-center p-6 min-h-[400px]">
-                  {newsPreviewUrl ? (
-                    <div className="relative w-full max-h-[400px] aspect-[3/4] bg-black shadow-2xl"><Image src={newsPreviewUrl} alt="Preview" fill className="object-contain" /></div>
-                  ) : (
-                    <div className="text-zinc-600 flex flex-col items-center"><ImageIcon size={48} className="mb-4 opacity-20" /><span className="text-sm tracking-widest font-serif">無附圖</span></div>
+                <div className="space-y-6">
+                  <div className="bg-zinc-900/50 border border-zinc-800 flex flex-col p-6 min-h-[300px]">
+                    <label className="block text-xs tracking-widest text-zinc-500 mb-4">宣傳海報 (單張封面)</label>
+                    <input type="file" accept="image/*" onChange={(e)=>handleFileSelect(e,"news")} className="w-full text-xs text-zinc-400 file:mr-4 file:py-1 file:px-3 file:border-0 file:bg-zinc-800 file:text-white mb-4" />
+                    {newsPreviewUrl ? (
+                      <div className="relative w-full h-[200px] aspect-[3/4] bg-black shadow-2xl mx-auto"><Image src={newsPreviewUrl} alt="Preview" fill className="object-contain" /></div>
+                    ) : (
+                      <div className="text-zinc-600 flex flex-col items-center justify-center flex-1"><ImageIcon size={48} className="mb-4 opacity-20" /><span className="text-sm tracking-widest font-serif">無封面圖</span></div>
+                    )}
+                  </div>
+
+                  {/* 💡 升級：舊有花絮照片預覽與刪除區塊 */}
+                  {existingNewsImages.length > 0 && (
+                    <div className="bg-zinc-900/50 border border-zinc-800 p-6">
+                      <label className="block text-xs tracking-widest text-zinc-500 mb-4">已上傳的花絮相片 (可刪除)</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {existingNewsImages.map((img, idx) => (
+                          <div key={idx} className="relative aspect-square bg-black group border border-zinc-700">
+                            <Image src={img} alt="preview" fill className="object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
+                            <button type="button" onClick={() => removeExistingNewsImage(idx)} className="absolute top-1 right-1 bg-red-500/80 p-1 rounded hover:bg-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
+
               </div>
             </section>
 
@@ -694,6 +720,7 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-3 mb-2">
                         {item.isArchived ? <span className="bg-zinc-800 text-zinc-500 text-[10px] px-2 py-0.5">封存</span> : <span className="bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 text-[10px] px-2 py-0.5">顯示中</span>}
                         {item.videoUrl && <Play size={12} className="text-red-500" />}
+                        {item.images?.length > 0 && <Images size={12} className="text-zinc-500" />}
                         <span className="text-xs text-zinc-400">{item.date} {item.endDate && `- ${item.endDate}`}</span>
                       </div>
                       <h4 className="text-lg text-zinc-200 tracking-widest">{item.title}</h4>
