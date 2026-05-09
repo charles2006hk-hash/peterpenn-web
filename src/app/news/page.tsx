@@ -1,7 +1,7 @@
 // src/app/news/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
@@ -28,6 +28,84 @@ const getEmbedUrl = (url: string) => {
   const vimeoMatch = url.match(/(?:vimeo\.com\/)([0-9]+)/i);
   if (vimeoMatch && vimeoMatch[1]) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
   return url;
+};
+
+// 💡 架構師新增：專屬的「自動輪播與動態縮放」底片捲軸模組
+const AutoCarousel = ({ images }: { images: string[] }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // 1. 監聽哪一張照片在正中央
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setActiveIndex(Number(entry.target.getAttribute('data-index')));
+        }
+      });
+    }, { root: containerRef.current, threshold: 0.6 });
+
+    const elements = containerRef.current.querySelectorAll('.carousel-item');
+    elements.forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, [images]);
+
+  // 2. 自動輪播邏輯 (每 3 秒執行一次)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!containerRef.current) return;
+      const maxIndex = images.length - 1;
+      const nextIndex = activeIndex >= maxIndex ? 0 : activeIndex + 1;
+      
+      const elements = containerRef.current.querySelectorAll('.carousel-item');
+      const nextElement = elements[nextIndex] as HTMLElement;
+      
+      if (nextElement) {
+        // 使用精準的水平滾動，避免網頁上下亂跳
+        const container = containerRef.current;
+        container.scrollTo({
+          left: nextElement.offsetLeft - container.offsetLeft - (container.clientWidth - nextElement.clientWidth) / 2,
+          behavior: 'smooth'
+        });
+      }
+    }, 3000); // 3000毫秒 = 3秒切換一次
+    
+    // 如果使用者手動滑動，會重置計時器，非常聰明！
+    return () => clearInterval(interval);
+  }, [activeIndex, images.length]);
+
+  if (!images || images.length === 0) return null;
+
+  return (
+    <div className="relative w-full overflow-hidden py-10 md:py-16">
+      <div 
+        ref={containerRef} 
+        className="flex overflow-x-auto snap-x snap-mandatory gap-4 no-scrollbar w-full md:max-w-3xl items-center" 
+        style={{ scrollbarWidth: 'none' }}
+      >
+        {images.map((img, idx) => {
+          const isActive = idx === activeIndex;
+          return (
+            <div
+              key={idx}
+              data-index={idx}
+              // 💡 關鍵：拿掉 grayscale (保持全彩)，並加入 scale 動畫
+              className={`carousel-item relative w-[75vw] md:w-[65%] shrink-0 aspect-[4/3] bg-zinc-900 border border-zinc-800 shadow-lg snap-center transition-all duration-[1000ms] ease-out origin-center ${
+                isActive ? 'scale-[1.15] opacity-100 z-10 shadow-2xl' : 'scale-90 opacity-30 z-0'
+              }`}
+            >
+              <img 
+                src={img} 
+                alt={`Highlight ${idx + 1}`} 
+                className="w-full h-full object-cover" 
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 };
 
 export default function NewsPage() {
@@ -149,20 +227,8 @@ export default function NewsPage() {
                         </div>
                       )}
 
-                      {/* 💡 升級：橫向底片捲軸 (解決版面臃腫) */}
-                      {event.images && event.images.length > 0 && (
-                        <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-6 no-scrollbar w-full md:max-w-3xl">
-                          {event.images.map((img, idx) => (
-                            <div key={idx} className="relative w-[85vw] md:w-[65%] shrink-0 aspect-[4/3] bg-zinc-900 border border-zinc-800 overflow-hidden shadow-lg snap-center group/img">
-                              <img 
-                                src={img} 
-                                alt={`Highlight ${idx + 1}`} 
-                                className="w-full h-full object-cover grayscale group-hover/img:grayscale-0 transition-all duration-700" 
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      {/* 💡 使用全新的自動輪播模組 */}
+                      <AutoCarousel images={event.images || []} />
 
                     </div>
                   </div>
