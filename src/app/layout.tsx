@@ -2,6 +2,8 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+// 💡 步驟二：匯入 Vercel Analytics 元件
+import { Analytics } from '@vercel/analytics/react';
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -26,7 +28,6 @@ export const metadata: Metadata = {
     siteName: 'PETERPENN POON Gallery',
     images: [
       {
-        // 💡 建議挑選一張作品命名為 logo.png 放入 public 資料夾
         url: '/logo.png', 
         width: 1024,
         height: 1024,
@@ -51,7 +52,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-TW" className="scroll-smooth">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        {/* 這裡是網站的主要內容 */}
+        {children}
+        
+        {/* 💡 步驟三：將分析器放在 body 的最後面，這樣就能追蹤全站流量了 */}
+        <Analytics />
+      </body>
     </html>
   )
 }
